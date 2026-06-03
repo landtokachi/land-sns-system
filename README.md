@@ -1,4 +1,17 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# LAND情報発信統合システム
+
+公益財団法人とかち財団 スタートアップ支援スペース「LAND」のSNS運用を効率化するためのWebシステムです。
+
+## セットアップ
+
+```bash
+cp .env.local.example .env.local
+# .env.local に Supabase / OpenAI の値を設定
+npm install
+npm run dev
+```
+
+Supabase SQL Editorで `supabase/migrations/` の SQL を順番に実行し、Storageで `generated-images` バケット（Public）を作成してください。
 
 ## Getting Started
 
