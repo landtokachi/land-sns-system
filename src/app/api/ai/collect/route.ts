@@ -180,11 +180,22 @@ ${pageText}
 
   let savedCount = 0
   if (allCandidates.length > 0) {
-    const { data, error } = await adminSupabase
+    // 既存タイトルを取得して重複を除外
+    const titles = allCandidates.map((c) => c.title)
+    const { data: existing } = await adminSupabase
       .from('post_candidates')
-      .insert(allCandidates)
-      .select('id')
-    if (!error) savedCount = data?.length || 0
+      .select('title')
+      .in('title', titles)
+    const existingTitles = new Set((existing || []).map((e: { title: string }) => e.title))
+    const newCandidates = allCandidates.filter((c) => !existingTitles.has(c.title))
+
+    if (newCandidates.length > 0) {
+      const { data, error } = await adminSupabase
+        .from('post_candidates')
+        .insert(newCandidates)
+        .select('id')
+      if (!error) savedCount = data?.length || 0
+    }
   }
 
   return NextResponse.json({
