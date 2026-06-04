@@ -18,6 +18,8 @@ export function SocialPostsEditor({ candidate, initialPosts }: Props) {
   const [posts, setPosts] = useState<SocialPost[]>(initialPosts)
   const [generating, setGenerating] = useState(false)
   const [saving, setSaving] = useState<string | null>(null)
+  const [publishing, setPublishing] = useState<string | null>(null)
+  const [publishSuccess, setPublishSuccess] = useState<string | null>(null)
 
   function getPost(platform: Platform) {
     return posts.find((p) => p.platform === platform)
@@ -45,6 +47,29 @@ export function SocialPostsEditor({ candidate, initialPosts }: Props) {
       .order('platform')
     if (refreshed) setPosts(refreshed)
     setGenerating(false)
+  }
+
+  async function handlePublish(platform: Platform) {
+    const post = getPost(platform)
+    if (!post) return
+    setPublishing(platform)
+    try {
+      const res = await fetch('/api/social-posts/publish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          social_post_id: post.id,
+          external_post_url: post.external_post_url || null,
+        }),
+      })
+      if (res.ok) {
+        setPublishSuccess(platform)
+        setTimeout(() => setPublishSuccess(null), 3000)
+        router.refresh()
+      }
+    } finally {
+      setPublishing(null)
+    }
   }
 
   async function handleSave(platform: Platform) {
@@ -91,16 +116,30 @@ export function SocialPostsEditor({ candidate, initialPosts }: Props) {
           <div key={platform} className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-gray-800">{PLATFORM_LABELS[platform]}</h3>
-              {post && (
-                <Button
-                  onClick={() => handleSave(platform)}
-                  loading={saving === platform}
-                  size="sm"
-                  variant="secondary"
-                >
-                  保存
-                </Button>
-              )}
+                <div className="flex items-center gap-2">
+                {post && post.status !== 'published' && (
+                  <button
+                    onClick={() => handlePublish(platform)}
+                    disabled={publishing === platform}
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-600 text-white hover:bg-emerald-700 transition-colors disabled:opacity-50"
+                  >
+                    {publishing === platform ? '処理中...' : publishSuccess === platform ? '✅ 投稿済みに変更しました' : '📤 投稿済みにする'}
+                  </button>
+                )}
+                {post && post.status === 'published' && (
+                  <span className="px-2 py-1 rounded-full text-xs bg-emerald-100 text-emerald-700">投稿済み</span>
+                )}
+                {post && (
+                  <Button
+                    onClick={() => handleSave(platform)}
+                    loading={saving === platform}
+                    size="sm"
+                    variant="secondary"
+                  >
+                    保存
+                  </Button>
+                )}
+              </div>
             </div>
 
             {post ? (

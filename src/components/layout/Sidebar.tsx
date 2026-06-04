@@ -10,6 +10,7 @@ const navItems = [
   { href: '/collect', label: 'AI情報収集', icon: '🤖' },
   { href: '/sources', label: '巡回サイト管理', icon: '🔄' },
   { href: '/schedule', label: '投稿予定', icon: '📅' },
+  { href: '/published', label: '投稿済み実績', icon: '✅' },
   { href: '/settings/staff', label: 'スタッフ管理', icon: '👤' },
   { href: '/settings', label: '設定', icon: '⚙️' },
 ]

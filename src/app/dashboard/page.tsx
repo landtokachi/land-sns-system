@@ -28,6 +28,8 @@ export default async function DashboardPage() {
     { data: recent },
     { data: nearDeadline },
     { data: weekPosts },
+    { data: allCandidates },
+    { data: reviewWaiting },
   ] = await Promise.all([
     supabase.from('post_candidates').select('*', { count: 'exact', head: true }),
     supabase.from('post_candidates').select('*', { count: 'exact', head: true }).eq('priority', 'high'),
@@ -37,6 +39,8 @@ export default async function DashboardPage() {
     supabase.from('post_candidates').select('id, title, category, priority, status, created_at').order('created_at', { ascending: false }).limit(5),
     supabase.from('post_candidates').select('id, title, deadline, priority, status').not('deadline', 'is', null).lte('deadline', soon.toISOString().slice(0, 10)).gte('deadline', now.toISOString().slice(0, 10)).order('deadline').limit(5),
     supabase.from('social_posts').select('id, platform, status, scheduled_at, post_candidates(title, category, priority)').gte('scheduled_at', weekStart.toISOString()).lte('scheduled_at', weekEnd.toISOString()).order('scheduled_at').limit(10),
+    supabase.from('post_candidates').select('status'),
+    supabase.from('post_candidates').select('id, title, review_status, updated_at').eq('review_status', 'requesting').order('updated_at', { ascending: false }).limit(5),
   ])
 
   const stats = [
@@ -46,6 +50,28 @@ export default async function DashboardPage() {
     { label: '投稿予定', value: scheduled ?? 0, color: 'bg-teal-500' },
     { label: '投稿済み', value: published ?? 0, color: 'bg-green-500' },
   ]
+
+  // ステータス別内訳
+  type StatusCount = { status: string; count: number; color: string; label: string }
+  const statusMap: Record<string, { color: string; label: string }> = {
+    unconfirmed:    { color: 'bg-gray-400',   label: '未確認' },
+    candidate:      { color: 'bg-blue-400',   label: '投稿候補' },
+    drafting:       { color: 'bg-purple-400', label: '下書き中' },
+    draft_created:  { color: 'bg-indigo-400', label: '下書き済み' },
+    image_created:  { color: 'bg-cyan-400',   label: '画像生成済み' },
+    review_waiting: { color: 'bg-orange-400', label: '確認待ち' },
+    ready:          { color: 'bg-green-400',  label: '準備完了' },
+    scheduled:      { color: 'bg-teal-400',   label: '投稿予定' },
+    published:      { color: 'bg-emerald-500',label: '投稿済み' },
+    skipped:        { color: 'bg-gray-300',   label: '見送り' },
+  }
+  const statusCounts = (allCandidates || []).reduce<Record<string, number>>((acc, c) => {
+    acc[c.status] = (acc[c.status] || 0) + 1
+    return acc
+  }, {})
+  const statusBreakdown: StatusCount[] = Object.entries(statusCounts)
+    .map(([status, count]) => ({ status, count, ...( statusMap[status] || { color: 'bg-gray-300', label: status }) }))
+    .sort((a, b) => b.count - a.count)
 
   return (
     <AppLayout title="ダッシュボード">
@@ -62,6 +88,51 @@ export default async function DashboardPage() {
             </div>
           ))}
         </div>
+
+        {/* ステータス内訳 */}
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold text-gray-800">投稿候補 ステータス内訳</h3>
+            <Link href="/candidates" className="text-sm text-indigo-600 hover:underline">一覧へ</Link>
+          </div>
+          {statusBreakdown.length > 0 ? (
+            <div className="space-y-2">
+              {statusBreakdown.map(s => (
+                <div key={s.status} className="flex items-center gap-3">
+                  <span className="text-xs text-gray-500 w-24 text-right flex-shrink-0">{s.label}</span>
+                  <div className="flex-1 bg-gray-100 rounded-full h-5 overflow-hidden">
+                    <div
+                      className={`h-full rounded-full ${s.color} transition-all flex items-center justify-end pr-2`}
+                      style={{ width: `${Math.max((s.count / (total || 1)) * 100, 8)}%` }}
+                    >
+                      <span className="text-white text-xs font-medium">{s.count}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-gray-400 text-center py-4">データがありません</p>
+          )}
+        </div>
+
+        {/* 確認待ち */}
+        {reviewWaiting && reviewWaiting.length > 0 && (
+          <div className="bg-orange-50 border border-orange-200 rounded-xl p-5">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold text-orange-800">⏳ 掲載確認待ち（{reviewWaiting.length}件）</h3>
+              <Link href="/candidates?status=review_waiting" className="text-sm text-orange-600 hover:underline">一覧へ</Link>
+            </div>
+            <div className="space-y-2">
+              {reviewWaiting.map((c) => (
+                <Link key={c.id} href={`/candidates/${c.id}`} className="flex items-center justify-between p-3 bg-white rounded-lg border border-orange-100 hover:border-orange-300 transition-colors">
+                  <span className="text-sm font-medium text-gray-800 truncate flex-1 mr-4">{c.title}</span>
+                  <span className="text-xs text-orange-600 flex-shrink-0">確認依頼中 →</span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-6">
           {/* Recent candidates */}
