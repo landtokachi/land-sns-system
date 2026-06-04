@@ -20,6 +20,9 @@ export function SocialPostsEditor({ candidate, initialPosts }: Props) {
   const [saving, setSaving] = useState<string | null>(null)
   const [publishing, setPublishing] = useState<string | null>(null)
   const [publishSuccess, setPublishSuccess] = useState<string | null>(null)
+  const [posting, setPosting] = useState<string | null>(null)
+  const [postSuccess, setPostSuccess] = useState<string | null>(null)
+  const [postError, setPostError] = useState<string | null>(null)
 
   function getPost(platform: Platform) {
     return posts.find((p) => p.platform === platform)
@@ -47,6 +50,30 @@ export function SocialPostsEditor({ candidate, initialPosts }: Props) {
       .order('platform')
     if (refreshed) setPosts(refreshed)
     setGenerating(false)
+  }
+
+  async function handlePostToFacebook(platform: Platform) {
+    const post = getPost(platform)
+    if (!post) return
+    setPosting(platform)
+    setPostError(null)
+    try {
+      const res = await fetch('/api/social-posts/post-to-facebook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ social_post_id: post.id }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setPostSuccess(platform)
+        setTimeout(() => setPostSuccess(null), 5000)
+        router.refresh()
+      } else {
+        setPostError(data.error || '投稿に失敗しました')
+      }
+    } finally {
+      setPosting(null)
+    }
   }
 
   async function handlePublish(platform: Platform) {
@@ -110,6 +137,12 @@ export function SocialPostsEditor({ candidate, initialPosts }: Props) {
         </Button>
       </div>
 
+      {postError && (
+        <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
+          ⚠️ {postError}
+        </div>
+      )}
+
       {PLATFORMS.map((platform) => {
         const post = getPost(platform)
         return (
@@ -117,6 +150,15 @@ export function SocialPostsEditor({ candidate, initialPosts }: Props) {
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-gray-800">{PLATFORM_LABELS[platform]}</h3>
                 <div className="flex items-center gap-2">
+                {post && post.status !== 'published' && platform === 'facebook' && (
+                  <button
+                    onClick={() => handlePostToFacebook(platform)}
+                    disabled={posting === platform}
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-50"
+                  >
+                    {posting === platform ? '投稿中...' : postSuccess === platform ? '✅ Facebookに投稿しました！' : '🚀 Facebookに今すぐ投稿'}
+                  </button>
+                )}
                 {post && post.status !== 'published' && (
                   <button
                     onClick={() => handlePublish(platform)}
