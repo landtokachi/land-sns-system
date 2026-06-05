@@ -52,13 +52,20 @@ export function SocialPostsEditor({ candidate, initialPosts }: Props) {
     setGenerating(false)
   }
 
-  async function handlePostToFacebook(platform: Platform) {
+  async function handleDirectPost(platform: Platform) {
     const post = getPost(platform)
     if (!post) return
     setPosting(platform)
     setPostError(null)
+    const endpointMap: Partial<Record<Platform, string>> = {
+      facebook: '/api/social-posts/post-to-facebook',
+      instagram: '/api/social-posts/post-to-instagram',
+      x: '/api/social-posts/post-to-x',
+    }
+    const endpoint = endpointMap[platform]
+    if (!endpoint) return
     try {
-      const res = await fetch('/api/social-posts/post-to-facebook', {
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ social_post_id: post.id }),
@@ -152,11 +159,29 @@ export function SocialPostsEditor({ candidate, initialPosts }: Props) {
                 <div className="flex items-center gap-2">
                 {post && post.status !== 'published' && platform === 'facebook' && (
                   <button
-                    onClick={() => handlePostToFacebook(platform)}
+                    onClick={() => handleDirectPost(platform)}
                     disabled={posting === platform}
                     className="px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-50"
                   >
                     {posting === platform ? '投稿中...' : postSuccess === platform ? '✅ Facebookに投稿しました！' : '🚀 Facebookに今すぐ投稿'}
+                  </button>
+                )}
+                {post && post.status !== 'published' && platform === 'instagram' && (
+                  <button
+                    onClick={() => handleDirectPost(platform)}
+                    disabled={posting === platform}
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:opacity-90 transition-opacity disabled:opacity-50"
+                  >
+                    {posting === platform ? '投稿中...' : postSuccess === platform ? '✅ Instagramに投稿しました！' : '📸 Instagramに今すぐ投稿'}
+                  </button>
+                )}
+                {post && post.status !== 'published' && platform === 'x' && (
+                  <button
+                    onClick={() => handleDirectPost(platform)}
+                    disabled={posting === platform}
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium bg-black text-white hover:bg-gray-800 transition-colors disabled:opacity-50"
+                  >
+                    {posting === platform ? '投稿中...' : postSuccess === platform ? '✅ Xに投稿しました！' : '𝕏 Xに今すぐ投稿'}
                   </button>
                 )}
                 {post && post.status !== 'published' && (
