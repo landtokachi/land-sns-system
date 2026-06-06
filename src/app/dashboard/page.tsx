@@ -245,10 +245,8 @@ export default async function DashboardPage() {
             <div className="space-y-2">
               {(recent as PostCandidate[] | null)?.map((c) => (
                 <Link key={c.id} href={`/candidates/${c.id}`}
-                  className="block p-3 rounded-xl transition-all"
+                  className="block p-3 rounded-xl transition-all hover:bg-white/5"
                   style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}
-                  onMouseEnter={e => (e.currentTarget as HTMLAnchorElement).style.background = 'rgba(255,255,255,0.06)'}
-                  onMouseLeave={e => (e.currentTarget as HTMLAnchorElement).style.background = 'rgba(255,255,255,0.03)'}
                 >
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-sm font-medium truncate flex-1" style={{ color: '#e2e8f0' }}>{c.title}</p>
@@ -279,10 +277,8 @@ export default async function DashboardPage() {
             <div className="space-y-2">
               {(nearDeadline as PostCandidate[] | null)?.map((c) => (
                 <Link key={c.id} href={`/candidates/${c.id}`}
-                  className="block p-3 rounded-xl transition-all"
+                  className="block p-3 rounded-xl transition-all hover:bg-white/5"
                   style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}
-                  onMouseEnter={e => (e.currentTarget as HTMLAnchorElement).style.background = 'rgba(255,255,255,0.06)'}
-                  onMouseLeave={e => (e.currentTarget as HTMLAnchorElement).style.background = 'rgba(255,255,255,0.03)'}
                 >
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-sm font-medium truncate flex-1" style={{ color: '#e2e8f0' }}>{c.title}</p>
