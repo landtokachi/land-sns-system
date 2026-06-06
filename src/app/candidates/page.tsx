@@ -34,29 +34,43 @@ export default async function CandidatesPage({
 
   return (
     <AppLayout title="投稿候補一覧">
-      <div className="space-y-4">
+      <div className="space-y-4 max-w-7xl mx-auto">
         <div className="flex items-center justify-between">
-          <p className="text-sm text-gray-500">{candidates?.length ?? 0}件</p>
+          <p className="text-sm" style={{ color: '#64748b' }}>{candidates?.length ?? 0}件</p>
           <Link
             href="/candidates/new"
-            className="inline-flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors"
+            className="inline-flex items-center gap-2 text-white px-4 py-2 rounded-xl text-sm font-medium transition-all"
+            style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}
           >
-            ＋ 新規登録
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            新規登録
           </Link>
         </div>
 
         {/* Filters */}
-        <form className="bg-white rounded-xl border border-gray-200 p-4 flex flex-wrap gap-3">
+        <form className="glass-card p-4 flex flex-wrap gap-3">
           <input
             name="q"
             defaultValue={params.q}
             placeholder="タイトルで検索"
-            className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-48"
+            className="rounded-xl px-3 py-2 text-sm w-full sm:w-48"
+            style={{
+              background: 'rgba(255,255,255,0.05)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              color: '#e2e8f0',
+            }}
           />
           <select
             name="status"
             defaultValue={params.status}
-            className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="rounded-xl px-3 py-2 text-sm"
+            style={{
+              background: 'rgba(255,255,255,0.05)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              color: '#e2e8f0',
+            }}
           >
             <option value="">全ステータス</option>
             {Object.entries(CANDIDATE_STATUS_LABELS).map(([v, l]) => (
@@ -66,7 +80,12 @@ export default async function CandidatesPage({
           <select
             name="priority"
             defaultValue={params.priority}
-            className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="rounded-xl px-3 py-2 text-sm"
+            style={{
+              background: 'rgba(255,255,255,0.05)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              color: '#e2e8f0',
+            }}
           >
             <option value="">全優先度</option>
             <option value="high">高</option>
@@ -76,75 +95,112 @@ export default async function CandidatesPage({
           <select
             name="category"
             defaultValue={params.category}
-            className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="rounded-xl px-3 py-2 text-sm"
+            style={{
+              background: 'rgba(255,255,255,0.05)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              color: '#e2e8f0',
+            }}
           >
             <option value="">全カテゴリ</option>
             {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
           <button
             type="submit"
-            className="bg-gray-100 text-gray-700 px-4 py-1.5 rounded-lg text-sm hover:bg-gray-200"
+            className="px-4 py-2 rounded-xl text-sm font-medium transition-all text-white"
+            style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}
           >
             検索
           </button>
-          <Link href="/candidates" className="text-sm text-gray-400 py-1.5">リセット</Link>
+          <Link href="/candidates" className="text-sm py-2 px-2" style={{ color: '#475569' }}>
+            リセット
+          </Link>
         </form>
 
-        {/* Table */}
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">タイトル</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">カテゴリ</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">情報元</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">締切日</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">投稿予定</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">優先度</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">ステータス</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">更新日</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {(candidates as PostCandidate[])?.map((c) => (
-                <tr key={c.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-3">
-                    <Link href={`/candidates/${c.id}`} className="font-medium text-indigo-600 hover:underline line-clamp-1">
-                      {c.title}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3 text-gray-600 text-xs">{c.category || '-'}</td>
-                  <td className="px-4 py-3 text-gray-600 text-xs">{c.source_name || '-'}</td>
-                  <td className="px-4 py-3 text-gray-600 text-xs">
-                    {c.deadline ? format(new Date(c.deadline), 'M/d', { locale: ja }) : '-'}
-                  </td>
-                  <td className="px-4 py-3 text-gray-600 text-xs">
-                    {c.scheduled_at ? format(new Date(c.scheduled_at), 'M/d', { locale: ja }) : '-'}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`px-2 py-0.5 rounded-full text-xs ${PRIORITY_COLORS[c.priority]}`}>
-                      {PRIORITY_LABELS[c.priority]}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`px-2 py-0.5 rounded-full text-xs ${CANDIDATE_STATUS_COLORS[c.status]}`}>
-                      {CANDIDATE_STATUS_LABELS[c.status]}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-gray-400 text-xs">
-                    {format(new Date(c.updated_at), 'M/d', { locale: ja })}
-                  </td>
+        {/* Table - desktop */}
+        <div className="glass-card overflow-hidden hidden sm:block">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+                  <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: '#475569' }}>タイトル</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: '#475569' }}>カテゴリ</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: '#475569' }}>情報元</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: '#475569' }}>締切日</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: '#475569' }}>優先度</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: '#475569' }}>ステータス</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: '#475569' }}>更新日</th>
                 </tr>
-              ))}
-              {!candidates?.length && (
-                <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center text-gray-400">
-                    投稿候補がありません
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {(candidates as PostCandidate[])?.map((c) => (
+                  <tr key={c.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}
+                    className="transition-colors hover:bg-white/5">
+                    <td className="px-4 py-3">
+                      <Link href={`/candidates/${c.id}`}
+                        className="font-medium hover:underline line-clamp-1"
+                        style={{ color: '#818cf8' }}>
+                        {c.title}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-3 text-xs" style={{ color: '#64748b' }}>{c.category || '-'}</td>
+                    <td className="px-4 py-3 text-xs" style={{ color: '#64748b' }}>{c.source_name || '-'}</td>
+                    <td className="px-4 py-3 text-xs" style={{ color: c.deadline ? '#f87171' : '#64748b' }}>
+                      {c.deadline ? format(new Date(c.deadline), 'M/d', { locale: ja }) : '-'}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`px-2 py-0.5 rounded-full text-xs ${PRIORITY_COLORS[c.priority]}`}>
+                        {PRIORITY_LABELS[c.priority]}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`px-2 py-0.5 rounded-full text-xs ${CANDIDATE_STATUS_COLORS[c.status]}`}>
+                        {CANDIDATE_STATUS_LABELS[c.status]}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-xs" style={{ color: '#475569' }}>
+                      {format(new Date(c.updated_at), 'M/d', { locale: ja })}
+                    </td>
+                  </tr>
+                ))}
+                {!candidates?.length && (
+                  <tr>
+                    <td colSpan={7} className="px-4 py-12 text-center text-sm" style={{ color: '#475569' }}>
+                      投稿候補がありません
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Cards - mobile */}
+        <div className="sm:hidden space-y-3">
+          {(candidates as PostCandidate[])?.map((c) => (
+            <Link key={c.id} href={`/candidates/${c.id}`} className="block glass-card p-4">
+              <div className="flex items-start justify-between gap-2 mb-2">
+                <p className="text-sm font-medium" style={{ color: '#e2e8f0' }}>{c.title}</p>
+                <span className={`px-2 py-0.5 rounded-full text-xs flex-shrink-0 ${PRIORITY_COLORS[c.priority]}`}>
+                  {PRIORITY_LABELS[c.priority]}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className={`px-2 py-0.5 rounded-full text-xs ${CANDIDATE_STATUS_COLORS[c.status]}`}>
+                  {CANDIDATE_STATUS_LABELS[c.status]}
+                </span>
+                {c.category && <span className="text-xs" style={{ color: '#475569' }}>{c.category}</span>}
+                {c.deadline && (
+                  <span className="text-xs" style={{ color: '#f87171' }}>
+                    締切: {format(new Date(c.deadline), 'M/d', { locale: ja })}
+                  </span>
+                )}
+              </div>
+            </Link>
+          ))}
+          {!candidates?.length && (
+            <p className="text-center text-sm py-8" style={{ color: '#475569' }}>投稿候補がありません</p>
+          )}
         </div>
       </div>
     </AppLayout>
