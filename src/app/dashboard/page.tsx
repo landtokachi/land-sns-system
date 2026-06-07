@@ -32,11 +32,21 @@ export default async function DashboardPage() {
   ])
 
   const stats = [
-    { label: '投稿候補数', value: total ?? 0, sub: '全件', color: '#6366f1', bg: '#eef2ff' },
-    { label: '優先度「高」', value: highPriority ?? 0, sub: '要対応', color: '#ef4444', bg: '#fef2f2' },
-    { label: '下書き済み', value: draftCreated ?? 0, sub: '確認含む', color: '#8b5cf6', bg: '#f5f3ff' },
-    { label: '投稿予定', value: scheduled ?? 0, sub: 'スケジュール', color: '#0ea5e9', bg: '#f0f9ff' },
-    { label: '投稿済み', value: published ?? 0, sub: '完了', color: '#10b981', bg: '#f0fdf4' },
+    { label: '投稿候補数', value: total ?? 0, sub: '全件',
+      color: '#4f46e5', bg: 'linear-gradient(135deg, #eef2ff, #e0e7ff)', border: '#c7d2fe',
+      icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg> },
+    { label: '優先度「高」', value: highPriority ?? 0, sub: '要対応',
+      color: '#dc2626', bg: 'linear-gradient(135deg, #fef2f2, #fee2e2)', border: '#fecaca',
+      icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg> },
+    { label: '下書き済み', value: draftCreated ?? 0, sub: '確認含む',
+      color: '#7c3aed', bg: 'linear-gradient(135deg, #f5f3ff, #ede9fe)', border: '#ddd6fe',
+      icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg> },
+    { label: '投稿予定', value: scheduled ?? 0, sub: 'スケジュール',
+      color: '#0369a1', bg: 'linear-gradient(135deg, #f0f9ff, #e0f2fe)', border: '#bae6fd',
+      icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg> },
+    { label: '投稿済み', value: published ?? 0, sub: '完了',
+      color: '#065f46', bg: 'linear-gradient(135deg, #f0fdf4, #dcfce7)', border: '#bbf7d0',
+      icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> },
   ]
 
   const STATUS_STYLE: Record<string, { label: string; color: string; dot: string }> = {
@@ -94,13 +104,18 @@ export default async function DashboardPage() {
         {/* Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           {stats.map(s => (
-            <div key={s.label} className="glass-card p-4">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-medium text-zinc-500">{s.label}</span>
-                <span className="text-xs px-1.5 py-0.5 rounded font-medium"
-                  style={{ background: s.bg, color: s.color }}>{s.sub}</span>
+            <div key={s.label} className="glass-card p-4 relative overflow-hidden"
+              style={{ borderTop: `3px solid ${s.border}` }}>
+              <div className="absolute top-0 right-0 w-24 h-24 rounded-full -translate-y-8 translate-x-8 opacity-60"
+                style={{ background: s.bg }} />
+              <div className="relative">
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center mb-3"
+                  style={{ background: s.bg, color: s.color, border: `1px solid ${s.border}` }}>
+                  {s.icon}
+                </div>
+                <p className="text-2xl font-bold text-slate-900">{s.value}</p>
+                <p className="text-xs text-slate-500 mt-0.5">{s.label}</p>
               </div>
-              <p className="text-2xl font-bold text-zinc-900">{s.value}</p>
             </div>
           ))}
         </div>

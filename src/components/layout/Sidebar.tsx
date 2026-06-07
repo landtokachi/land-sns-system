@@ -19,7 +19,7 @@ const navGroups = [
     label: 'AI・収集',
     items: [
       { href: '/collect', label: 'AI情報収集',
-        icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg> },
+        icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3"/></svg> },
       { href: '/sources', label: '巡回サイト',
         icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg> },
     ],
@@ -52,30 +52,31 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const inner = (
     <aside
       className={clsx(
-        'w-[220px] min-h-screen flex flex-col bg-white',
+        'w-[220px] min-h-screen flex flex-col',
         'fixed inset-y-0 left-0 z-50 transition-transform duration-200',
         'lg:relative lg:translate-x-0',
         isOpen === false ? '-translate-x-full' : 'translate-x-0',
       )}
-      style={{ borderRight: '1px solid #e4e4e7' }}
+      style={{ background: '#fff', borderRight: '1px solid #e2e8f0' }}
     >
       {/* Logo */}
-      <div className="px-4 h-14 flex items-center gap-2.5 flex-shrink-0"
-        style={{ borderBottom: '1px solid #f4f4f5' }}>
-        <div className="w-7 h-7 rounded-lg bg-black flex items-center justify-center flex-shrink-0">
-          <span className="text-white text-xs font-black">L</span>
+      <div className="px-4 h-14 flex items-center gap-3 flex-shrink-0"
+        style={{ borderBottom: '1px solid #f1f5f9' }}>
+        <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+          style={{ background: 'linear-gradient(135deg, #6366f1, #4f46e5)' }}>
+          <span className="text-white text-sm font-black">L</span>
         </div>
         <div>
-          <p className="text-sm font-semibold text-zinc-900 leading-none">LAND</p>
-          <p className="text-xs text-zinc-400 mt-0.5">SNS管理</p>
+          <p className="text-sm font-bold text-slate-900 leading-none">LAND</p>
+          <p className="text-xs text-slate-400 mt-0.5">SNS管理</p>
         </div>
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-3 py-3 overflow-y-auto space-y-4">
+      <nav className="flex-1 px-3 py-3 overflow-y-auto space-y-5">
         {navGroups.map(group => (
           <div key={group.label}>
-            <p className="text-xs font-medium text-zinc-400 px-2 mb-1">{group.label}</p>
+            <p className="text-xs font-semibold text-slate-400 px-2 mb-1.5 uppercase tracking-wider">{group.label}</p>
             <div className="space-y-0.5">
               {group.items.map(item => {
                 const isActive =
@@ -84,12 +85,12 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 return (
                   <Link key={item.href} href={item.href} onClick={onClose}
                     className={clsx(
-                      'flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm transition-colors',
+                      'flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm transition-all duration-150',
                       isActive
-                        ? 'nav-active text-zinc-900'
-                        : 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-50',
+                        ? 'nav-active'
+                        : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50',
                     )}>
-                    <span className={clsx('flex-shrink-0', isActive ? 'text-zinc-700' : 'text-zinc-400')}>
+                    <span className={isActive ? 'text-indigo-600' : 'text-slate-400'}>
                       {item.icon}
                     </span>
                     {item.label}
@@ -102,14 +103,15 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       </nav>
 
       {/* User */}
-      <div className="px-3 py-3 flex-shrink-0" style={{ borderTop: '1px solid #f4f4f5' }}>
-        <div className="flex items-center gap-2.5 px-2 py-2 rounded-lg hover:bg-zinc-50 cursor-pointer transition-colors">
-          <div className="w-7 h-7 rounded-full bg-zinc-200 flex items-center justify-center text-xs font-semibold text-zinc-600 flex-shrink-0">
+      <div className="px-3 py-3 flex-shrink-0" style={{ borderTop: '1px solid #f1f5f9' }}>
+        <div className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg bg-slate-50">
+          <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
+            style={{ background: 'linear-gradient(135deg, #6366f1, #4f46e5)' }}>
             L
           </div>
           <div className="min-w-0">
-            <p className="text-xs font-medium text-zinc-800 truncate">LAND スタッフ</p>
-            <p className="text-xs text-zinc-400 truncate">とかち財団</p>
+            <p className="text-xs font-semibold text-slate-700 truncate">LAND スタッフ</p>
+            <p className="text-xs text-slate-400 truncate">とかち財団</p>
           </div>
         </div>
       </div>
