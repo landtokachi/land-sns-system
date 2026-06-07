@@ -1,123 +1,146 @@
 @import "tailwindcss";
 
-:root {
-  --accent: #6366f1;
-  --accent2: #8b5cf6;
-  --accent3: #3b82f6;
-}
-
 * { box-sizing: border-box; }
 
 html, body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans JP', sans-serif;
   min-height: 100vh;
-  color: #1e1b4b;
+  color: #e2e8f0;
 }
 
-/* ── Background: FundFlow風 淡いラベンダーグラデーション ── */
+/* =====================================================
+   BACKGROUND — Deep dark + dramatic pink/purple sweep
+   ===================================================== */
 .app-bg {
   background:
-    radial-gradient(ellipse at 20% 20%, rgba(167,139,250,0.18) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 80%, rgba(99,102,241,0.14) 0%, transparent 50%),
-    radial-gradient(ellipse at 60% 10%, rgba(139,92,246,0.10) 0%, transparent 40%),
-    linear-gradient(150deg, #dde3f8 0%, #e8ecfc 35%, #edf0fc 65%, #e4e8f8 100%);
+    radial-gradient(ellipse at 90% 40%, rgba(219, 39, 119, 0.28) 0%, transparent 42%),
+    radial-gradient(ellipse at 10% 70%, rgba(59, 130, 246, 0.22) 0%, transparent 38%),
+    radial-gradient(ellipse at 55% 5%,  rgba(124, 58, 237, 0.18) 0%, transparent 35%),
+    radial-gradient(ellipse at 40% 90%, rgba(99, 102, 241, 0.15) 0%, transparent 30%),
+    linear-gradient(150deg, #07090f 0%, #0c1220 25%, #0f103a 50%, #100824 75%, #0a0812 100%);
   background-attachment: fixed;
   min-height: 100vh;
 }
 
-/* ── Frosted glass card (FundFlow style) ── */
+/* =====================================================
+   GLASS CARDS
+   ===================================================== */
 .glass-card {
-  background: rgba(255, 255, 255, 0.62);
-  border: 1px solid rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.055);
+  border: 1px solid rgba(255, 255, 255, 0.095);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-radius: 20px;
   box-shadow:
-    0 8px 32px rgba(99, 102, 241, 0.07),
-    0 2px 8px rgba(0, 0, 0, 0.04),
-    inset 0 1px 0 rgba(255,255,255,0.9);
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  transition: box-shadow 0.2s;
 }
 
-.glass-card-inner {
-  background: rgba(255, 255, 255, 0.45);
-  border: 1px solid rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+.glass-card:hover {
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.10);
+}
+
+.glass-inner {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: 14px;
-}
-
-/* ── Gradient accent card ── */
-.gradient-card {
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a78bfa 100%);
-  border-radius: 20px;
-  color: white;
-  box-shadow: 0 8px 24px rgba(99,102,241,0.35);
-}
-
-/* ── Scrollbar ── */
-::-webkit-scrollbar { width: 5px; height: 5px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(99,102,241,0.2); border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(99,102,241,0.35); }
-
-/* ── Inputs ── */
-input, textarea, select {
-  background: rgba(255,255,255,0.7) !important;
-  border: 1.5px solid rgba(99,102,241,0.15) !important;
-  color: #1e1b4b !important;
-  border-radius: 12px !important;
   backdrop-filter: blur(10px);
+}
+
+/* =====================================================
+   SCROLLBAR
+   ===================================================== */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.10); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.20); }
+
+/* =====================================================
+   INPUTS
+   ===================================================== */
+input, textarea, select {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(255, 255, 255, 0.10) !important;
+  color: #e2e8f0 !important;
+  border-radius: 12px !important;
   transition: all 0.2s;
 }
-input::placeholder, textarea::placeholder { color: #a5b4fc !important; }
+input::placeholder, textarea::placeholder { color: #334155 !important; }
 input:focus, textarea:focus, select:focus {
-  border-color: rgba(99,102,241,0.5) !important;
-  background: rgba(255,255,255,0.9) !important;
+  border-color: rgba(139, 92, 246, 0.6) !important;
+  background: rgba(255, 255, 255, 0.09) !important;
   outline: none !important;
-  box-shadow: 0 0 0 3px rgba(99,102,241,0.12) !important;
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.15) !important;
 }
-select option { background: #f5f3ff; color: #1e1b4b; }
+select option { background: #1e1b4b; color: #e2e8f0; }
 
-/* ── Table ── */
+/* =====================================================
+   TABLE
+   ===================================================== */
 table { width: 100%; border-collapse: collapse; }
 th {
-  color: #8b8bba;
+  color: #475569;
   font-size: 0.7rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.07em;
+  letter-spacing: 0.08em;
   padding: 0.75rem 1rem;
-  border-bottom: 1px solid rgba(99,102,241,0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   text-align: left;
-  background: rgba(255,255,255,0.3);
+  background: rgba(255,255,255,0.02);
 }
 td {
   padding: 0.875rem 1rem;
-  border-bottom: 1px solid rgba(99,102,241,0.06);
-  color: #3730a3;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  color: #94a3b8;
   font-size: 0.875rem;
 }
-tr:hover td { background: rgba(99,102,241,0.04); }
+tr:hover td { background: rgba(255, 255, 255, 0.03); }
 
-/* ── Nav active ── */
+/* =====================================================
+   NAV ACTIVE
+   ===================================================== */
 .nav-active {
-  background: linear-gradient(135deg, rgba(99,102,241,0.15), rgba(139,92,246,0.10)) !important;
-  border: 1px solid rgba(99,102,241,0.2) !important;
-  color: #4f46e5 !important;
+  background: linear-gradient(90deg, rgba(139,92,246,0.22), rgba(99,102,241,0.10)) !important;
+  border-left: 2px solid #8b5cf6 !important;
+  color: #c4b5fd !important;
 }
 
-/* ── Mobile overlay ── */
+/* =====================================================
+   MOBILE OVERLAY
+   ===================================================== */
 .sidebar-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(99,102,241,0.15);
+  background: rgba(0, 0, 0, 0.65);
   z-index: 40;
   backdrop-filter: blur(4px);
 }
 
-/* ── Badge variants ── */
-.badge-blue   { background: rgba(99,102,241,0.12); color: #4f46e5; border: 1px solid rgba(99,102,241,0.2); }
-.badge-purple { background: rgba(139,92,246,0.12); color: #7c3aed; border: 1px solid rgba(139,92,246,0.2); }
-.badge-green  { background: rgba(16,185,129,0.12); color: #059669; border: 1px solid rgba(16,185,129,0.2); }
-.badge-red    { background: rgba(239,68,68,0.10);  color: #dc2626; border: 1px solid rgba(239,68,68,0.15); }
-.badge-amber  { background: rgba(245,158,11,0.12); color: #d97706; border: 1px solid rgba(245,158,11,0.2); }
+/* =====================================================
+   GRADIENT TEXT
+   ===================================================== */
+.gradient-text {
+  background: linear-gradient(135deg, #c4b5fd, #a5b4fc, #93c5fd);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* =====================================================
+   GLOW BUTTON
+   ===================================================== */
+.btn-glow {
+  background: linear-gradient(135deg, #7c3aed, #6366f1);
+  box-shadow: 0 4px 20px rgba(124, 58, 237, 0.45), 0 0 0 1px rgba(139,92,246,0.2);
+  color: white;
+  border: none;
+  transition: all 0.2s;
+}
+.btn-glow:hover {
+  box-shadow: 0 6px 28px rgba(124, 58, 237, 0.60), 0 0 0 1px rgba(139,92,246,0.3);
+  transform: translateY(-1px);
+}
