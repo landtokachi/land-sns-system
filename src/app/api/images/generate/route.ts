@@ -5,6 +5,9 @@ import { type ImageTextData } from '@/lib/image/templates'
 import OpenAI from 'openai'
 import sharp from 'sharp'
 
+// Vercel Hobby: 60秒まで延長（DALL-E生成に必要）
+export const maxDuration = 60
+
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
 const adminClient = createSupabaseClient(
@@ -186,25 +189,32 @@ export async function POST(request: NextRequest) {
     let bgBuffer: Buffer | null = null
     let dallePrompt = ''
     try {
+      console.log('[Image] Building DALL-E prompt for:', title)
       dallePrompt = await buildDallePrompt(title, category)
-      console.log('DALL-E prompt:', dallePrompt)
+      console.log('[Image] DALL-E prompt:', dallePrompt.slice(0, 100))
 
+      console.log('[Image] Calling DALL-E 3...')
       const dalleRes = await openai.images.generate({
         model: 'dall-e-3',
-        prompt: dallePrompt + ', no text, no letters, no watermark',
+        prompt: dallePrompt + '. No text, no letters, no words anywhere in the image.',
         size: '1024x1024',
         quality: 'standard',
         n: 1,
       })
 
       const dalleUrl = dalleRes.data?.[0]?.url
+      console.log('[Image] DALL-E URL:', dalleUrl ? 'received' : 'null')
+
       if (dalleUrl) {
-        const imgRes = await fetch(dalleUrl, { signal: AbortSignal.timeout(30000) })
+        console.log('[Image] Downloading DALL-E image...')
+        const imgRes = await fetch(dalleUrl, { signal: AbortSignal.timeout(45000) })
+        if (!imgRes.ok) throw new Error(`Image download failed: ${imgRes.status}`)
         const arrayBuf = await imgRes.arrayBuffer()
         bgBuffer = Buffer.from(arrayBuf)
+        console.log('[Image] DALL-E image downloaded:', bgBuffer.length, 'bytes')
       }
     } catch (dalleErr) {
-      console.warn('DALL-E generation failed, using SVG fallback:', dalleErr)
+      console.error('[Image] DALL-E generation failed:', dalleErr)
     }
 
     // ── STEP 2: テキストオーバーレイSVGを生成 ──
