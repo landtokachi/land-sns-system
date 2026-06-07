@@ -17,14 +17,18 @@ export function ImageGenerator({ candidate, initialImages, socialPost }: Props) 
   const [generating, setGenerating] = useState(false)
   const [previewSvg, setPreviewSvg] = useState<string | null>(null)
   const [templateType, setTemplateType] = useState(
-    candidate.category?.includes('補助金') ? 'subsidy'
-    : candidate.category?.includes('イベント') ? 'event'
-    : candidate.category?.includes('LAND') ? 'land'
-    : candidate.category?.includes('事業者') ? 'business'
+    candidate.category?.includes('補助金') || candidate.category?.includes('助成') ? 'subsidy'
+    : candidate.category?.includes('イベント') || candidate.category?.includes('セミナー') ? 'event'
+    : candidate.category?.includes('LAND') || candidate.category?.includes('とかち財団') || candidate.category?.includes('活動') ? 'land'
+    : candidate.category?.includes('事業者') || candidate.category?.includes('採択') ? 'business'
     : 'notice'
   )
-  const [imageTitle, setImageTitle] = useState(socialPost?.image_title || candidate.title.slice(0, 30))
-  const [imageSubtitle, setImageSubtitle] = useState(socialPost?.image_subtitle || '')
+  // タイトル: 候補タイトルそのままを使う（画像テンプレートが折り返すため長くてOK）
+  const [imageTitle, setImageTitle] = useState(socialPost?.image_title || candidate.title)
+  // サブ: AI生成のimage_subtitleか、要約の先頭
+  const [imageSubtitle, setImageSubtitle] = useState(
+    socialPost?.image_subtitle || candidate.ai_summary?.slice(0, 44) || ''
+  )
 
   async function handleGenerate() {
     setGenerating(true)
@@ -40,6 +44,7 @@ export function ImageGenerator({ candidate, initialImages, socialPost }: Props) 
           category: candidate.category || '',
           date: candidate.event_date || '',
           deadline: candidate.deadline || '',
+          amount: '', // 将来拡張用
           target_audience: candidate.target_audience || '',
           organizer: candidate.organizer || '',
           url: candidate.application_url || candidate.source_url || '',
@@ -50,7 +55,6 @@ export function ImageGenerator({ candidate, initialImages, socialPost }: Props) 
     const data = await res.json()
     if (data.svg) setPreviewSvg(data.svg)
 
-    // Refresh images
     const supabase = (await import('@/lib/supabase/client')).createClient()
     const { data: refreshed } = await supabase
       .from('generated_images')
@@ -63,59 +67,65 @@ export function ImageGenerator({ candidate, initialImages, socialPost }: Props) 
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div>
-        <h2 className="text-lg font-semibold text-gray-800">{candidate.title}</h2>
-        <p className="text-sm text-gray-500">Instagram用投稿画像（1080×1080px）を生成します</p>
+        <h2 className="text-base font-bold" style={{color:'#e2e8f0'}}>{candidate.title}</h2>
+        <p className="text-xs mt-0.5" style={{color:'#4a3a6a'}}>SNS投稿用画像（1080×1080px）を生成</p>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
-        <h3 className="font-semibold text-gray-800">テンプレート設定</h3>
+      {/* Settings */}
+      <div className="glass-card p-5 space-y-4">
+        <h3 className="text-sm font-bold text-white">テンプレート・テキスト設定</h3>
 
+        {/* Template selector */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">テンプレート種類</label>
+          <label className="block text-xs font-semibold mb-2" style={{color:'#7c6fa8'}}>テンプレート種類</label>
           <div className="flex flex-wrap gap-2">
             {TEMPLATE_TYPES.map((t) => (
-              <button
-                key={t.value}
-                onClick={() => setTemplateType(t.value)}
-                className={`px-4 py-2 rounded-lg text-sm border transition-colors ${
-                  templateType === t.value
-                    ? 'bg-indigo-600 text-white border-indigo-600'
-                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                }`}
-              >
+              <button key={t.value} onClick={() => setTemplateType(t.value)}
+                className="px-3 py-1.5 rounded-xl text-xs font-medium transition-all"
+                style={templateType === t.value
+                  ? { background: 'linear-gradient(135deg, #7c3aed, #6366f1)', color: 'white', boxShadow: '0 4px 12px rgba(124,58,237,0.4)' }
+                  : { background: 'rgba(255,255,255,0.06)', color: '#7c6fa8', border: '1px solid rgba(255,255,255,0.08)' }}>
                 {t.label}
               </button>
             ))}
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">画像タイトル（30文字以内）</label>
-            <input
-              value={imageTitle}
-              onChange={(e) => setImageTitle(e.target.value)}
-              maxLength={30}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">サブタイトル（40文字以内）</label>
-            <input
-              value={imageSubtitle}
-              onChange={(e) => setImageSubtitle(e.target.value)}
-              maxLength={40}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-          </div>
+        {/* Title */}
+        <div>
+          <label className="block text-xs font-semibold mb-1.5" style={{color:'#7c6fa8'}}>
+            画像タイトル（そのまま大きく表示されます）
+          </label>
+          <input value={imageTitle} onChange={e => setImageTitle(e.target.value)}
+            className="w-full px-3 py-2.5 text-sm rounded-xl" maxLength={40}/>
+          <p className="text-xs mt-1" style={{color:'#3a2a5a'}}>※ 長い場合は自動で折り返し。短く・インパクトある表現が効果的</p>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 text-sm text-gray-600">
-          <p>📅 締切/開催日: {candidate.deadline || candidate.event_date || '未設定'}</p>
-          <p>👥 対象者: {candidate.target_audience || '未設定'}</p>
-          <p>🏢 主催者: {candidate.organizer || '未設定'}</p>
+        {/* Subtitle */}
+        <div>
+          <label className="block text-xs font-semibold mb-1.5" style={{color:'#7c6fa8'}}>
+            サブテキスト（タイトル下に小さく表示）
+          </label>
+          <input value={imageSubtitle} onChange={e => setImageSubtitle(e.target.value)}
+            className="w-full px-3 py-2.5 text-sm rounded-xl" maxLength={44} placeholder="例: 最大〇〇万円補助 / 4月10日 無料参加"/>
+        </div>
+
+        {/* Info chips */}
+        <div className="grid grid-cols-2 gap-2 text-xs">
+          {[
+            { icon: '📅', label: '締切/開催日', value: candidate.deadline || candidate.event_date },
+            { icon: '👥', label: '対象者', value: candidate.target_audience },
+            { icon: '🏢', label: '主催者', value: candidate.organizer },
+            { icon: '🔗', label: '情報源', value: candidate.source_name },
+          ].map(item => item.value && (
+            <div key={item.label} className="px-3 py-2 rounded-xl"
+              style={{background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.06)'}}>
+              <span style={{color:'#7c6fa8'}}>{item.icon} {item.label}: </span>
+              <span className="text-white">{item.value}</span>
+            </div>
+          ))}
         </div>
 
         <Button onClick={handleGenerate} loading={generating} size="lg">
@@ -125,26 +135,50 @@ export function ImageGenerator({ candidate, initialImages, socialPost }: Props) 
 
       {/* Preview */}
       {previewSvg && (
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <h3 className="font-semibold text-gray-800 mb-4">プレビュー</h3>
-          <div
-            className="w-full max-w-sm mx-auto rounded-lg overflow-hidden border"
-            dangerouslySetInnerHTML={{ __html: previewSvg.replace(/width="1080" height="1080"/, 'width="100%" height="100%" viewBox="0 0 1080 1080"') }}
-          />
+        <div className="glass-card p-5">
+          <h3 className="text-sm font-bold text-white mb-4">プレビュー</h3>
+          <div className="w-full max-w-xs mx-auto rounded-2xl overflow-hidden shadow-2xl"
+            style={{boxShadow:'0 12px 40px rgba(0,0,0,0.5)'}}>
+            <div dangerouslySetInnerHTML={{
+              __html: previewSvg.replace(
+                /width="1080" height="1080"/,
+                'width="100%" height="100%" viewBox="0 0 1080 1080"'
+              )
+            }} />
+          </div>
+          <p className="text-xs text-center mt-3" style={{color:'#4a3a6a'}}>
+            ※ 実際の画像は1080×1080pxで保存されます
+          </p>
         </div>
       )}
 
       {/* Past images */}
       {images.length > 0 && (
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <h3 className="font-semibold text-gray-800 mb-4">生成済み画像</h3>
+        <div className="glass-card p-5">
+          <h3 className="text-sm font-bold text-white mb-4">生成済み画像</h3>
           <div className="grid grid-cols-2 gap-4">
             {images.map((img) => (
-              <div key={img.id} className="border border-gray-100 rounded-lg p-3">
-                <p className="text-xs text-gray-500 mb-2">{img.template_type} / {img.created_at.slice(0, 10)}</p>
+              <div key={img.id} className="rounded-xl overflow-hidden"
+                style={{border:'1px solid rgba(255,255,255,0.08)'}}>
+                <div className="px-3 py-2 text-xs flex items-center justify-between"
+                  style={{background:'rgba(255,255,255,0.04)', color:'#4a3a6a'}}>
+                  <span>{img.template_type}</span>
+                  <span>{img.created_at.slice(0, 10)}</span>
+                </div>
                 {img.image_url && (
-                  <a href={img.image_url} target="_blank" rel="noopener" className="block">
-                    <img src={img.image_url} alt="" className="w-full rounded hover:opacity-90 transition-opacity" />
+                  <a href={img.image_url} target="_blank" rel="noopener noreferrer">
+                    <img src={img.image_url} alt="" className="w-full hover:opacity-90 transition-opacity"/>
+                  </a>
+                )}
+                {(img as GeneratedImage & {png_url?: string}).png_url && (
+                  <a href={(img as GeneratedImage & {png_url?: string}).png_url}
+                    target="_blank" rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 py-2 text-xs font-semibold transition-all hover:bg-white/10"
+                    style={{color:'#a78bfa'}}>
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                    </svg>
+                    PNG保存（SNS投稿用）
                   </a>
                 )}
               </div>
