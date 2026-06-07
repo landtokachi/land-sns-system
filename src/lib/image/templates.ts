@@ -14,220 +14,465 @@ export interface ImageTextData {
 
 /**
  * SNS投稿用画像テンプレート
- * - タイトルを大きく・中央に
- * - 美しい背景グラデーションのみ
- * - 余計な情報は載せない
- * - @land.tokachi のみ小さく
+ * カテゴリに合ったSVGイラスト背景 + 大きなタイトル文字
  */
-
-const THEMES = {
-  subsidy: {
-    // 深いグリーン〜ティール（補助金）
-    stops: [
-      { offset: '0%',   color: '#064e3b' },
-      { offset: '35%',  color: '#065f46' },
-      { offset: '65%',  color: '#0f4c3a' },
-      { offset: '100%', color: '#022c22' },
-    ],
-    glow1: { cx: '75%', cy: '15%', color: '#34d399', opacity: 0.30 },
-    glow2: { cx: '20%', cy: '85%', color: '#059669', opacity: 0.22 },
-    glow3: { cx: '50%', cy: '50%', color: '#10b981', opacity: 0.10 },
-    accent: '#6ee7b7',
-    label: '補助金・助成金',
-  },
-  event: {
-    // 深いブルー〜インディゴ（イベント）
-    stops: [
-      { offset: '0%',   color: '#0c1445' },
-      { offset: '30%',  color: '#1e1b75' },
-      { offset: '65%',  color: '#1a1060' },
-      { offset: '100%', color: '#060920' },
-    ],
-    glow1: { cx: '70%', cy: '20%', color: '#818cf8', opacity: 0.35 },
-    glow2: { cx: '25%', cy: '80%', color: '#6366f1', opacity: 0.25 },
-    glow3: { cx: '55%', cy: '45%', color: '#a5b4fc', opacity: 0.12 },
-    accent: '#c7d2fe',
-    label: 'イベント・セミナー',
-  },
-  land: {
-    // ゴールド〜ダークブラウン（LAND）
-    stops: [
-      { offset: '0%',   color: '#451a03' },
-      { offset: '30%',  color: '#7c2d12' },
-      { offset: '65%',  color: '#92400e' },
-      { offset: '100%', color: '#1c0a00' },
-    ],
-    glow1: { cx: '72%', cy: '18%', color: '#fbbf24', opacity: 0.32 },
-    glow2: { cx: '22%', cy: '82%', color: '#f59e0b', opacity: 0.24 },
-    glow3: { cx: '50%', cy: '50%', color: '#fcd34d', opacity: 0.10 },
-    accent: '#fde68a',
-    label: 'LANDの取り組み',
-  },
-  business: {
-    // ディープパープル（事業者紹介）
-    stops: [
-      { offset: '0%',   color: '#2e1065' },
-      { offset: '30%',  color: '#4c1d95' },
-      { offset: '65%',  color: '#3b0764' },
-      { offset: '100%', color: '#0f0520' },
-    ],
-    glow1: { cx: '68%', cy: '20%', color: '#c4b5fd', opacity: 0.35 },
-    glow2: { cx: '25%', cy: '78%', color: '#a78bfa', opacity: 0.25 },
-    glow3: { cx: '50%', cy: '50%', color: '#ddd6fe', opacity: 0.10 },
-    accent: '#ede9fe',
-    label: '事業者紹介',
-  },
-  notice: {
-    // ディープブルー〜シアン（お知らせ）
-    stops: [
-      { offset: '0%',   color: '#0c4a6e' },
-      { offset: '30%',  color: '#075985' },
-      { offset: '65%',  color: '#0369a1' },
-      { offset: '100%', color: '#042f4b' },
-    ],
-    glow1: { cx: '70%', cy: '18%', color: '#38bdf8', opacity: 0.35 },
-    glow2: { cx: '22%', cy: '82%', color: '#0ea5e9', opacity: 0.25 },
-    glow3: { cx: '50%', cy: '50%', color: '#7dd3fc', opacity: 0.10 },
-    accent: '#bae6fd',
-    label: 'お知らせ',
-  },
-} as const
-
-type TKey = keyof typeof THEMES
-
 export function generateSvgTemplate(data: ImageTextData): string {
-  const key: TKey = (data.template_type in THEMES ? data.template_type : 'notice') as TKey
-  const t = THEMES[key]
-
-  // ── タイトルを折り返す（8文字 / 行）──
-  const lines = wrapJa(data.title, 8)
+  const type = data.template_type
+  const bg = getBg(type, data)
+  const title = data.title
+  const lines = wrapJa(title, 9)
   const n = lines.length
-
-  // ── フォントサイズ（行数に応じて最適化）──
-  const fs = n === 1 ? 120 : n === 2 ? 104 : n === 3 ? 88 : 74
-  const lh = fs * 1.25
-
-  // タイトルブロック全体の高さ
-  const totalH = n * lh
-  // 中央配置（少し上寄り）
-  const startY = Math.round(540 - totalH / 2 + fs * 0.15)
+  const fs = n <= 2 ? 108 : n === 3 ? 90 : 76
+  const lh = fs * 1.22
+  const titleY = Math.round(540 - (n * lh) / 2 + fs * 0.18)
 
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1080" width="1080" height="1080">
 <defs>
-
-  <!-- ── 背景グラデーション ── -->
-  <linearGradient id="bg" x1="0.1" y1="0" x2="0.9" y2="1">
-    ${t.stops.map(s => `<stop offset="${s.offset}" stop-color="${s.color}"/>`).join('\n    ')}
+  ${bg.defs}
+  <filter id="ts"><feDropShadow dx="0" dy="3" stdDeviation="10" flood-color="rgba(0,0,0,0.95)"/><feDropShadow dx="0" dy="0" stdDeviation="20" flood-color="rgba(0,0,0,0.6)"/></filter>
+  <filter id="gs"><feGaussianBlur stdDeviation="45"/></filter>
+  <filter id="gs2"><feGaussianBlur stdDeviation="18"/></filter>
+  <linearGradient id="ov" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%"   stop-color="rgba(0,0,0,0.05)"/>
+    <stop offset="35%"  stop-color="rgba(0,0,0,0.32)"/>
+    <stop offset="65%"  stop-color="rgba(0,0,0,0.60)"/>
+    <stop offset="100%" stop-color="rgba(0,0,0,0.78)"/>
   </linearGradient>
-
-  <!-- ── グロー（光の玉） ── -->
-  <radialGradient id="glow1" cx="${t.glow1.cx}" cy="${t.glow1.cy}" r="42%">
-    <stop offset="0%"   stop-color="${t.glow1.color}" stop-opacity="${t.glow1.opacity}"/>
-    <stop offset="100%" stop-color="${t.glow1.color}" stop-opacity="0"/>
-  </radialGradient>
-  <radialGradient id="glow2" cx="${t.glow2.cx}" cy="${t.glow2.cy}" r="38%">
-    <stop offset="0%"   stop-color="${t.glow2.color}" stop-opacity="${t.glow2.opacity}"/>
-    <stop offset="100%" stop-color="${t.glow2.color}" stop-opacity="0"/>
-  </radialGradient>
-  <radialGradient id="glow3" cx="${t.glow3.cx}" cy="${t.glow3.cy}" r="32%">
-    <stop offset="0%"   stop-color="${t.glow3.color}" stop-opacity="${t.glow3.opacity}"/>
-    <stop offset="100%" stop-color="${t.glow3.color}" stop-opacity="0"/>
-  </radialGradient>
-
-  <!-- ── テキストシャドウ ── -->
-  <filter id="shadow" x="-10%" y="-20%" width="120%" height="140%">
-    <feDropShadow dx="0" dy="4" stdDeviation="12" flood-color="rgba(0,0,0,0.85)"/>
-  </filter>
-
-  <!-- ── グロー blur ── -->
-  <filter id="gBlur">
-    <feGaussianBlur stdDeviation="55"/>
-  </filter>
-  <filter id="gBlurSoft">
-    <feGaussianBlur stdDeviation="20"/>
-  </filter>
-
-  <!-- ── アクセントグラデーション（下線用） ── -->
-  <linearGradient id="line" x1="0" y1="0" x2="1" y2="0">
-    <stop offset="0%"   stop-color="${t.accent}" stop-opacity="1"/>
-    <stop offset="100%" stop-color="${t.accent}" stop-opacity="0"/>
+  <linearGradient id="tbg" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%"   stop-color="rgba(0,0,0,0)"/>
+    <stop offset="25%"  stop-color="rgba(0,0,0,0.50)"/>
+    <stop offset="50%"  stop-color="rgba(0,0,0,0.68)"/>
+    <stop offset="75%"  stop-color="rgba(0,0,0,0.50)"/>
+    <stop offset="100%" stop-color="rgba(0,0,0,0)"/>
   </linearGradient>
-
+  <linearGradient id="botfade" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%"   stop-color="rgba(0,0,0,0)"/>
+    <stop offset="100%" stop-color="rgba(0,0,0,0.70)"/>
+  </linearGradient>
+  <linearGradient id="acc" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0%" stop-color="${bg.accent}"/>
+    <stop offset="100%" stop-color="${bg.accent}88"/>
+  </linearGradient>
 </defs>
 
-<!-- ===========================
-     BACKGROUND
-     =========================== -->
+<!-- 背景 -->
+${bg.bg}
 
-<!-- ベース -->
-<rect width="1080" height="1080" fill="url(#bg)"/>
+<!-- 全体ベール -->
+<rect width="1080" height="1080" fill="url(#ov)"/>
 
-<!-- グロー球体 -->
-<rect width="1080" height="1080" fill="url(#glow1)"/>
-<rect width="1080" height="1080" fill="url(#glow2)"/>
-<rect width="1080" height="1080" fill="url(#glow3)"/>
+<!-- テキスト帯（タイトル背後を暗く） -->
+<rect x="0" y="${titleY - fs * 0.9}" width="1080" height="${n * lh + fs * 1.2}" fill="url(#tbg)"/>
 
-<!-- 円形の光（大） -->
-<circle cx="810" cy="185" r="300" fill="${t.glow1.color}" opacity="0.07" filter="url(#gBlur)"/>
-<circle cx="220" cy="880" r="260" fill="${t.glow2.color}" opacity="0.08" filter="url(#gBlur)"/>
+<!-- 下部フェード（ブランディング用） -->
+<rect x="0" y="820" width="1080" height="260" fill="url(#botfade)"/>
 
-<!-- 幾何学的ライン装飾 -->
-<circle cx="960" cy="110" r="140" fill="none" stroke="${t.accent}" stroke-width="1.5" opacity="0.20"/>
-<circle cx="960" cy="110" r="90"  fill="none" stroke="${t.accent}" stroke-width="0.8" opacity="0.13"/>
-<circle cx="120" cy="970" r="110" fill="none" stroke="${t.accent}" stroke-width="1.2" opacity="0.15"/>
-
-<!-- 右上コーナー三角装飾 -->
-<polygon points="1080,0 1080,380 720,0" fill="${t.accent}" opacity="0.06"/>
-
-<!-- 左下コーナー装飾 -->
-<polygon points="0,1080 0,750 300,1080" fill="${t.glow2.color}" opacity="0.05"/>
-
-<!-- ===========================
-     TITLE エリア
-     =========================== -->
-
-<!-- タイトル白テキスト（超大文字） -->
-${lines.map((line, i) => `
-<text
-  x="540"
-  y="${startY + i * lh}"
+<!-- タイトル -->
+${lines.map((line, i) => `<text x="540" y="${titleY + i * lh}"
   font-family="'Noto Sans JP','Hiragino Kaku Gothic ProN','Yu Gothic Bold',sans-serif"
-  font-size="${fs}"
-  font-weight="900"
-  fill="white"
-  text-anchor="middle"
-  letter-spacing="4"
-  filter="url(#shadow)"
->${esc(line)}</text>`).join('')}
+  font-size="${fs}" font-weight="900" fill="white"
+  text-anchor="middle" letter-spacing="3"
+  filter="url(#ts)">${esc(line)}</text>`).join('\n')}
 
-<!-- アクセントライン（タイトル直下） -->
-<rect
-  x="${Math.round(540 - 50)}"
-  y="${startY + n * lh + 8}"
-  width="100" height="4" rx="2"
-  fill="${t.accent}" opacity="0.8"/>
+<!-- アクセントライン -->
+<rect x="${540 - 52}" y="${titleY + n * lh + 14}" width="104" height="5" rx="2.5" fill="url(#acc)"/>
 
-<!-- ===========================
-     BRANDING（最小限）
-     =========================== -->
+<!-- LAND（左上） -->
+<text x="46" y="58" font-family="Arial,sans-serif" font-size="21" font-weight="900"
+  letter-spacing="5" fill="white" opacity="0.65" filter="url(#ts)">LAND</text>
 
-<!-- 左上: LAND -->
-<text
-  x="44" y="56"
-  font-family="Arial,sans-serif"
-  font-size="22" font-weight="900" letter-spacing="5"
-  fill="${t.accent}" opacity="0.6">LAND</text>
-
-<!-- 右下: @land.tokachi -->
-<text
-  x="1036" y="1054"
-  font-family="Arial,sans-serif"
-  font-size="18"
-  fill="${t.accent}"
-  text-anchor="end"
-  opacity="0.5">@land.tokachi</text>
-
+<!-- @land.tokachi（右下） -->
+<text x="1034" y="1052" font-family="Arial,sans-serif" font-size="17"
+  fill="white" text-anchor="end" opacity="0.55" filter="url(#ts)">@land.tokachi</text>
 </svg>`
+}
+
+// ─── カテゴリ別背景 ─────────────────────────────────────────────────
+function getBg(type: string, _data: ImageTextData) {
+  switch (type) {
+    case 'subsidy': return subsidyBg()
+    case 'event':   return eventBg()
+    case 'land':    return landBg()
+    case 'business': return businessBg()
+    default:        return noticeBg()
+  }
+}
+
+// ── 補助金: コイン・書類・ビジネス ──────────────────────────────────
+function subsidyBg() {
+  return {
+    accent: '#fbbf24',
+    defs: `
+    <radialGradient id="c1" cx="72%" cy="22%" r="48%">
+      <stop offset="0%" stop-color="#15803d" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#052e16" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="c2" cx="20%" cy="78%" r="42%">
+      <stop offset="0%" stop-color="#166534" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#052e16" stop-opacity="0"/>
+    </radialGradient>`,
+    bg: `
+    <!-- ベース深緑 -->
+    <rect width="1080" height="1080" fill="#052e16"/>
+    <rect width="1080" height="1080" fill="url(#c1)"/>
+    <rect width="1080" height="1080" fill="url(#c2)"/>
+
+    <!-- コイン（右上エリア） -->
+    ${coins(720, 160, 120, '#fbbf24')}
+    ${coins(860, 240, 90, '#f59e0b')}
+    ${coins(780, 300, 70, '#fcd34d')}
+
+    <!-- 紙幣/書類のシルエット -->
+    ${document(580, 140, 240, 170)}
+    ${document(620, 340, 200, 140)}
+
+    <!-- 上昇グラフ -->
+    ${chart(60, 120, '#4ade80')}
+
+    <!-- 建物シルエット -->
+    ${buildings(0, 700)}
+
+    <!-- グロー -->
+    <circle cx="800" cy="200" r="200" fill="#fbbf24" opacity="0.08" filter="url(#gs)"/>
+    <circle cx="150" cy="850" r="160" fill="#16a34a" opacity="0.10" filter="url(#gs)"/>`,
+  }
+}
+
+// ── イベント: 人々・ステージ・光 ────────────────────────────────────
+function eventBg() {
+  return {
+    accent: '#818cf8',
+    defs: `
+    <radialGradient id="e1" cx="50%" cy="0%" r="55%">
+      <stop offset="0%" stop-color="#312e81" stop-opacity="1"/>
+      <stop offset="100%" stop-color="#0f0a1e" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="e2" cx="50%" cy="100%" r="50%">
+      <stop offset="0%" stop-color="#1e1b4b" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#0f0a1e" stop-opacity="0"/>
+    </radialGradient>`,
+    bg: `
+    <!-- ベース -->
+    <rect width="1080" height="1080" fill="#0f0a1e"/>
+    <rect width="1080" height="1080" fill="url(#e1)"/>
+    <rect width="1080" height="1080" fill="url(#e2)"/>
+
+    <!-- ステージ照明（スポットライト） -->
+    ${spotlight(200, 0, '#a78bfa', 0.18)}
+    ${spotlight(540, 0, '#818cf8', 0.22)}
+    ${spotlight(880, 0, '#c4b5fd', 0.16)}
+    ${spotlight(340, 0, '#6366f1', 0.12)}
+    ${spotlight(720, 0, '#8b5cf6', 0.14)}
+
+    <!-- 聴衆シルエット（下部） -->
+    ${audience(0, 840)}
+
+    <!-- 星/光の粒 -->
+    ${stars()}
+
+    <!-- グロー -->
+    <circle cx="540" cy="100" r="250" fill="#6366f1" opacity="0.12" filter="url(#gs)"/>
+    <circle cx="540" cy="900" r="200" fill="#4338ca" opacity="0.15" filter="url(#gs)"/>`,
+  }
+}
+
+// ── LAND: 北海道の大地・自然・コミュニティ ─────────────────────────
+function landBg() {
+  return {
+    accent: '#fcd34d',
+    defs: `
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0c1445"/>
+      <stop offset="40%" stop-color="#1e3a6e"/>
+      <stop offset="70%" stop-color="#7c3d10"/>
+      <stop offset="100%" stop-color="#451a03"/>
+    </linearGradient>`,
+    bg: `
+    <!-- 空グラデーション -->
+    <rect width="1080" height="1080" fill="url(#sky)"/>
+
+    <!-- 地平線の光 -->
+    <ellipse cx="540" cy="580" rx="600" ry="120" fill="#f97316" opacity="0.25" filter="url(#gs)"/>
+    <ellipse cx="540" cy="560" rx="400" ry="80" fill="#fbbf24" opacity="0.20" filter="url(#gs)"/>
+
+    <!-- 十勝の大地シルエット -->
+    ${hokkaido(0, 600)}
+
+    <!-- 星空 -->
+    ${stars()}
+
+    <!-- 月 -->
+    <circle cx="820" cy="140" r="70" fill="#fef9c3" opacity="0.85"/>
+    <circle cx="840" cy="128" r="70" fill="#1e3a6e" opacity="0.85"/>
+
+    <!-- 山のシルエット -->
+    ${mountains(0, 620)}
+
+    <!-- グロー -->
+    <circle cx="540" cy="560" rx="400" ry="80" fill="#f59e0b" opacity="0.15" filter="url(#gs)"/>`,
+  }
+}
+
+// ── 事業者紹介: 人・ビジネス・プロフェッショナル ─────────────────
+function businessBg() {
+  return {
+    accent: '#c4b5fd',
+    defs: `
+    <radialGradient id="b1" cx="40%" cy="30%" r="55%">
+      <stop offset="0%" stop-color="#2e1065"/>
+      <stop offset="100%" stop-color="#0c0514" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="b2" cx="70%" cy="70%" r="45%">
+      <stop offset="0%" stop-color="#4c1d95"/>
+      <stop offset="100%" stop-color="#0c0514" stop-opacity="0"/>
+    </radialGradient>`,
+    bg: `
+    <!-- ベース -->
+    <rect width="1080" height="1080" fill="#0c0514"/>
+    <rect width="1080" height="1080" fill="url(#b1)"/>
+    <rect width="1080" height="1080" fill="url(#b2)"/>
+
+    <!-- 人物シルエット（後ろ姿・プレゼン） -->
+    ${personSilhouette(540, 650, 200, '#a78bfa', 0.30)}
+    ${personSilhouette(300, 700, 140, '#8b5cf6', 0.18)}
+    ${personSilhouette(780, 720, 160, '#7c3aed', 0.20)}
+
+    <!-- ネットワーク/接続ライン -->
+    ${network()}
+
+    <!-- 都市の光（下部） -->
+    ${cityLights(0, 800)}
+
+    <!-- グロー -->
+    <circle cx="540" cy="600" r="280" fill="#8b5cf6" opacity="0.10" filter="url(#gs)"/>
+    <circle cx="200" cy="200" r="180" fill="#7c3aed" opacity="0.12" filter="url(#gs)"/>`,
+  }
+}
+
+// ── お知らせ: 動的・情報・デジタル ─────────────────────────────────
+function noticeBg() {
+  return {
+    accent: '#38bdf8',
+    defs: `
+    <radialGradient id="n1" cx="60%" cy="25%" r="50%">
+      <stop offset="0%" stop-color="#075985"/>
+      <stop offset="100%" stop-color="#020617" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="n2" cx="30%" cy="75%" r="45%">
+      <stop offset="0%" stop-color="#0c4a6e"/>
+      <stop offset="100%" stop-color="#020617" stop-opacity="0"/>
+    </radialGradient>`,
+    bg: `
+    <!-- ベース -->
+    <rect width="1080" height="1080" fill="#020617"/>
+    <rect width="1080" height="1080" fill="url(#n1)"/>
+    <rect width="1080" height="1080" fill="url(#n2)"/>
+
+    <!-- デジタルグリッド -->
+    ${grid()}
+
+    <!-- 情報パーティクル -->
+    ${particles()}
+
+    <!-- グロー -->
+    <circle cx="700" cy="200" r="220" fill="#0ea5e9" opacity="0.12" filter="url(#gs)"/>
+    <circle cx="300" cy="800" r="180" fill="#0284c7" opacity="0.10" filter="url(#gs)"/>`,
+  }
+}
+
+// ─── SVG 描画ヘルパー ────────────────────────────────────────────────
+
+function coins(cx: number, cy: number, r: number, color: string): string {
+  return `
+  <ellipse cx="${cx}" cy="${cy}" rx="${r}" ry="${r * 0.28}" fill="${color}" opacity="0.80"/>
+  <ellipse cx="${cx}" cy="${cy - r * 0.18}" rx="${r}" ry="${r * 0.28}" fill="${color}" opacity="0.72"/>
+  <ellipse cx="${cx}" cy="${cy - r * 0.36}" rx="${r}" ry="${r * 0.28}" fill="${color}" opacity="0.64"/>
+  <ellipse cx="${cx}" cy="${cy - r * 0.54}" rx="${r}" ry="${r * 0.28}" fill="${color}" opacity="0.56"/>
+  <text x="${cx}" y="${cy - r * 0.36}" font-size="${r * 0.5}" text-anchor="middle"
+    dominant-baseline="middle" font-weight="900" fill="rgba(0,0,0,0.5)">¥</text>`
+}
+
+function document(x: number, y: number, w: number, h: number): string {
+  return `
+  <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="8"
+    fill="rgba(255,255,255,0.07)" stroke="rgba(255,255,255,0.15)" stroke-width="1.5"/>
+  <rect x="${x + 16}" y="${y + 18}" width="${w * 0.65}" height="8" rx="4" fill="rgba(255,255,255,0.20)"/>
+  <rect x="${x + 16}" y="${y + 36}" width="${w * 0.80}" height="6" rx="3" fill="rgba(255,255,255,0.13)"/>
+  <rect x="${x + 16}" y="${y + 50}" width="${w * 0.70}" height="6" rx="3" fill="rgba(255,255,255,0.13)"/>
+  <rect x="${x + 16}" y="${y + 64}" width="${w * 0.55}" height="6" rx="3" fill="rgba(255,255,255,0.10)"/>
+  <rect x="${x + 16}" y="${y + 78}" width="${w * 0.75}" height="6" rx="3" fill="rgba(255,255,255,0.10)"/>
+  <rect x="${x + 16}" y="${y + 92}" width="${w * 0.40}" height="6" rx="3" fill="rgba(255,255,255,0.10)"/>`
+}
+
+function chart(x: number, y: number, color: string): string {
+  const pts = [[0,200],[80,180],[160,140],[240,160],[320,100],[400,80],[480,50],[560,30]]
+  const path = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${x + p[0]},${y + p[1]}`).join(' ')
+  const fill = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${x + p[0]},${y + p[1]}`).join(' ')
+    + ` L${x + 560},${y + 260} L${x},${y + 260} Z`
+  return `
+  <path d="${fill}" fill="${color}" opacity="0.08"/>
+  <path d="${path}" fill="none" stroke="${color}" stroke-width="3" opacity="0.55"/>
+  ${pts.map(p => `<circle cx="${x + p[0]}" cy="${y + p[1]}" r="5" fill="${color}" opacity="0.70"/>`).join('')}`
+}
+
+function buildings(x: number, y: number): string {
+  const blds = [
+    { w: 80, h: 220, lx: 80 },{ w: 60, h: 160, lx: 170 },
+    { w: 100, h: 300, lx: 240 },{ w: 70, h: 180, lx: 350 },
+    { w: 50, h: 140, lx: 430 },{ w: 90, h: 260, lx: 490 },
+    { w: 65, h: 200, lx: 590 },{ w: 110, h: 340, lx: 670 },
+    { w: 55, h: 150, lx: 790 },{ w: 80, h: 220, lx: 860 },
+    { w: 70, h: 190, lx: 950 },
+  ]
+  return blds.map(b =>
+    `<rect x="${x + b.lx}" y="${y - b.h}" width="${b.w}" height="${b.h}"
+      fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>`
+  ).join('')
+}
+
+function spotlight(cx: number, cy: number, color: string, op: number): string {
+  return `<path d="M${cx - 15},${cy} L${cx + 15},${cy} L${cx + 200},1080 L${cx - 200},1080 Z"
+    fill="${color}" opacity="${op}"/>`
+}
+
+function audience(x: number, y: number): string {
+  const heads = []
+  for (let i = 0; i < 25; i++) {
+    const hx = x + 30 + i * 42 + (i % 2) * 20
+    const hy = y + (i % 3) * 18
+    const hr = 16 + (i % 3) * 4
+    heads.push(`<ellipse cx="${hx}" cy="${hy}" rx="${hr}" ry="${hr * 1.1}"
+      fill="rgba(255,255,255,0.12)"/>`)
+    heads.push(`<rect x="${hx - hr * 0.8}" y="${hy + hr * 0.8}" width="${hr * 1.6}" height="${hr * 2}"
+      rx="${hr * 0.5}" fill="rgba(255,255,255,0.08)"/>`)
+  }
+  return heads.join('')
+}
+
+function stars(): string {
+  const pts = []
+  const positions = [
+    [100,80],[200,40],[350,100],[450,60],[600,30],[700,90],[800,50],[950,80],[1020,30],
+    [150,200],[400,180],[650,160],[900,200],[80,300],[300,280],[750,260],[1000,300],
+    [220,150],[500,120],[770,140],[1050,170],[50,400],[450,380],[850,360],
+  ]
+  for (const [px, py] of positions) {
+    const r = 1.5 + Math.random() * 2
+    pts.push(`<circle cx="${px}" cy="${py}" r="${r}" fill="white" opacity="${0.4 + Math.random() * 0.5}"/>`)
+  }
+  return pts.join('')
+}
+
+function hokkaido(x: number, y: number): string {
+  // 十勝の大地を象徴する丘のシルエット
+  return `
+  <path d="M${x},${y + 480} Q${x + 150},${y + 300} ${x + 280},${y + 360}
+    Q${x + 400},${y + 250} ${x + 540},${y + 280}
+    Q${x + 680},${y + 200} ${x + 820},${y + 260}
+    Q${x + 950},${y + 200} ${x + 1080},${y + 240}
+    L${x + 1080},${y + 480} Z"
+    fill="rgba(0,0,0,0.55)"/>
+  <path d="M${x},${y + 480} Q${x + 160},${y + 380} ${x + 320},${y + 410}
+    Q${x + 480},${y + 340} ${x + 600},${y + 360}
+    Q${x + 750},${y + 310} ${x + 900},${y + 340}
+    Q${x + 1000},${y + 310} ${x + 1080},${y + 320}
+    L${x + 1080},${y + 480} Z"
+    fill="rgba(5,46,22,0.7)"/>
+  <!-- 木々のシルエット -->
+  ${Array.from({length: 12}, (_, i) => {
+    const tx = 60 + i * 88, th = 40 + (i % 3) * 20
+    return `<polygon points="${tx},${y + 350} ${tx - 20},${y + 400} ${tx + 20},${y + 400}"
+      fill="rgba(5,46,22,0.8)"/>`
+  }).join('')}`
+}
+
+function mountains(x: number, y: number): string {
+  return `
+  <polygon points="${x + 500},${y - 200} ${x + 300},${y + 60} ${x + 700},${y + 60}"
+    fill="rgba(0,0,0,0.50)"/>
+  <polygon points="${x + 700},${y - 150} ${x + 550},${y + 60} ${x + 850},${y + 60}"
+    fill="rgba(0,0,0,0.40)"/>
+  <polygon points="${x + 300},${y - 100} ${x + 150},${y + 60} ${x + 450},${y + 60}"
+    fill="rgba(0,0,0,0.45)"/>
+  <!-- 雪 -->
+  <polygon points="${x + 500},${y - 200} ${x + 460},${y - 140} ${x + 540},${y - 140}"
+    fill="rgba(255,255,255,0.70)"/>`
+}
+
+function personSilhouette(cx: number, cy: number, scale: number, color: string, op: number): string {
+  const s = scale / 100
+  return `
+  <!-- 頭 -->
+  <circle cx="${cx}" cy="${cy - scale * 1.4}" r="${scale * 0.28}"
+    fill="${color}" opacity="${op}"/>
+  <!-- 体 -->
+  <path d="M${cx - scale * 0.35},${cy - scale * 1.1}
+    Q${cx},${cy - scale * 0.85} ${cx + scale * 0.35},${cy - scale * 1.1}
+    L${cx + scale * 0.28},${cy - scale * 0.2}
+    Q${cx},${cy} ${cx - scale * 0.28},${cy - scale * 0.2} Z"
+    fill="${color}" opacity="${op * 0.85}"/>
+  <!-- 腕（上げている） -->
+  <path d="M${cx - scale * 0.35},${cy - scale * 0.9} Q${cx - scale * 0.7},${cy - scale * 1.4} ${cx - scale * 0.5},${cy - scale * 1.6}"
+    fill="none" stroke="${color}" stroke-width="${scale * 0.12}" stroke-linecap="round" opacity="${op}"/>
+  <!-- 脚 -->
+  <line x1="${cx - scale * 0.14}" y1="${cy - scale * 0.2}" x2="${cx - scale * 0.2}" y2="${cy + scale * 0.5}"
+    stroke="${color}" stroke-width="${scale * 0.14}" stroke-linecap="round" opacity="${op}"/>
+  <line x1="${cx + scale * 0.14}" y1="${cy - scale * 0.2}" x2="${cx + scale * 0.2}" y2="${cy + scale * 0.5}"
+    stroke="${color}" stroke-width="${scale * 0.14}" stroke-linecap="round" opacity="${op}"/>`
+}
+
+function network(): string {
+  const nodes = [[200,200],[400,300],[600,180],[800,280],[350,450],[650,400],[900,150],[150,500]]
+  const lines = [[0,1],[1,2],[2,3],[0,4],[1,4],[2,5],[3,5],[3,6],[4,5],[5,7]]
+  return [
+    ...lines.map(([a, b]) =>
+      `<line x1="${nodes[a][0]}" y1="${nodes[a][1]}" x2="${nodes[b][0]}" y2="${nodes[b][1]}"
+        stroke="#a78bfa" stroke-width="1" opacity="0.20"/>`
+    ),
+    ...nodes.map(([nx, ny]) =>
+      `<circle cx="${nx}" cy="${ny}" r="5" fill="#c4b5fd" opacity="0.35"/>`
+    ),
+  ].join('')
+}
+
+function cityLights(x: number, y: number): string {
+  const lights = []
+  for (let i = 0; i < 40; i++) {
+    const lx = x + Math.random() * 1080
+    const ly = y + Math.random() * 200
+    const r = 1 + Math.random() * 3
+    const colors = ['#fbbf24', '#60a5fa', '#f0abfc', '#34d399', '#fb923c']
+    lights.push(`<circle cx="${lx}" cy="${ly}" r="${r}"
+      fill="${colors[i % colors.length]}" opacity="${0.3 + Math.random() * 0.5}"/>`)
+  }
+  return lights.join('')
+}
+
+function grid(): string {
+  const lines = []
+  for (let i = 0; i <= 12; i++) {
+    const x = i * 90
+    lines.push(`<line x1="${x}" y1="0" x2="${x}" y2="1080" stroke="#0ea5e9" stroke-width="0.5" opacity="0.08"/>`)
+  }
+  for (let i = 0; i <= 12; i++) {
+    const y = i * 90
+    lines.push(`<line x1="0" y1="${y}" x2="1080" y2="${y}" stroke="#0ea5e9" stroke-width="0.5" opacity="0.08"/>`)
+  }
+  return lines.join('')
+}
+
+function particles(): string {
+  const pts = []
+  const positions = [
+    [150,150,4],[350,200,3],[600,120,5],[800,180,3],[100,350,4],
+    [400,400,3],[700,320,4],[950,250,3],[200,550,5],[500,500,3],
+    [850,450,4],[1000,380,3],[300,700,4],[650,680,3],[900,620,5],
+    [120,750,3],[480,800,4],[750,750,3],[980,700,4],
+  ]
+  for (const [px, py, pr] of positions) {
+    pts.push(`<circle cx="${px}" cy="${py}" r="${pr}" fill="#38bdf8" opacity="${0.25 + Math.random() * 0.35}"/>`)
+  }
+  return pts.join('')
 }
 
 function wrapJa(text: string, max: number): string[] {
@@ -242,7 +487,6 @@ function wrapJa(text: string, max: number): string[] {
 }
 
 function esc(s: string): string {
-  return s
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;').replace(/'/g, '&apos;')
 }

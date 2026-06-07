@@ -57,13 +57,13 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         'lg:relative lg:translate-x-0',
         isOpen === false ? '-translate-x-full' : 'translate-x-0',
       )}
-      style={{ background: '#fff', borderRight: '1px solid #e2e8f0' }}
+      style={{ background: '#fff', borderRight: '1px solid #e2e8f0', boxShadow: '2px 0 8px rgba(0,0,0,0.04)' }}
     >
       {/* Logo */}
       <div className="px-4 h-14 flex items-center gap-3 flex-shrink-0"
-        style={{ borderBottom: '1px solid #f1f5f9' }}>
-        <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-          style={{ background: 'linear-gradient(135deg, #6366f1, #4f46e5)' }}>
+        style={{ borderBottom: '1px solid #f1f5f9', background: 'linear-gradient(135deg, #faf9ff, #fff)' }}>
+        <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
+          style={{ background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', boxShadow: '0 2px 8px rgba(79,70,229,0.35)' }}>
           <span className="text-white text-sm font-black">L</span>
         </div>
         <div>
@@ -104,9 +104,10 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
       {/* User */}
       <div className="px-3 py-3 flex-shrink-0" style={{ borderTop: '1px solid #f1f5f9' }}>
-        <div className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg bg-slate-50">
+        <div className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl"
+          style={{ background: 'linear-gradient(135deg, #eef2ff, #f5f3ff)' }}>
           <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
-            style={{ background: 'linear-gradient(135deg, #6366f1, #4f46e5)' }}>
+            style={{ background: 'linear-gradient(135deg, #4f46e5, #7c3aed)' }}>
             L
           </div>
           <div className="min-w-0">

@@ -84,21 +84,33 @@ export default async function DashboardPage() {
     <AppLayout title="ダッシュボード">
       <div className="space-y-6 max-w-7xl mx-auto">
 
-        {/* Page header */}
-        <div className="flex items-center justify-between">
+        {/* Page hero header */}
+        <div className="rounded-2xl px-6 py-5 flex items-center justify-between flex-wrap gap-4"
+          style={{
+            background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #6d28d9 100%)',
+            boxShadow: '0 4px 20px rgba(79,70,229,0.30)',
+          }}>
           <div>
-            <h2 className="text-lg font-semibold text-zinc-900">概要</h2>
-            <p className="text-sm text-zinc-500 mt-0.5">
+            <h2 className="text-lg font-bold text-white">ダッシュボード</h2>
+            <p className="text-sm text-indigo-200 mt-0.5">
               {format(now, 'yyyy年M月d日（E）', {locale:ja})} 時点
             </p>
           </div>
-          <Link href="/candidates/new"
-            className="btn-glow inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium">
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/>
-            </svg>
-            新規登録
-          </Link>
+          <div className="flex gap-2">
+            <Link href="/collect"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold transition-all hover:bg-white/20"
+              style={{ background: 'rgba(255,255,255,0.15)', color: 'white', border: '1px solid rgba(255,255,255,0.25)' }}>
+              ✨ AI収集
+            </Link>
+            <Link href="/candidates/new"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-bold transition-all hover:bg-indigo-50"
+              style={{ background: 'white', color: '#4f46e5' }}>
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/>
+              </svg>
+              新規登録
+            </Link>
+          </div>
         </div>
 
         {/* Stats */}
