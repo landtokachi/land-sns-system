@@ -89,21 +89,31 @@ export async function POST(request: NextRequest) {
       }
 
       // AIで投稿候補になりそうな情報を抽出
+      const today = new Date().toISOString().slice(0, 10) // YYYY-MM-DD
       const response = await openai.chat.completions.create({
         model: 'gpt-4o-mini',
         messages: [{
           role: 'user',
           content: `あなたはスタートアップ支援施設「LAND」（公益財団法人とかち財団運営、北海道十勝・帯広）のSNS担当アシスタントです。
 
+本日の日付: ${today}
+
 以下は「${source.name}」（${source.url}）のページ内容です。
-このページから、LANDのSNS投稿に使えそうな情報を最大5件抽出してください。
+このページから、LANDのSNS投稿に使えそうな【最新の情報】を最大5件抽出してください。
 
 【抽出基準】
 - 起業家・スタートアップ・中小企業に役立つ情報
-- 補助金・助成金・支援制度
-- セミナー・イベント・相談会
+- 補助金・助成金・支援制度（現在募集中・今後公募予定のもの）
+- セミナー・イベント・相談会（今後開催されるもの）
 - 経営・マーケティング・資金調達のノウハウ
 - 創業・起業に関する最新情報
+
+【重要: 以下の情報は抽出しないこと】
+- 締切日・開催日が本日（${today}）より前に終了した過去の情報
+- 年度が古い情報（例: 令和5年度=2023年度、令和4年度=2022年度など今より2年以上前）
+- すでに受付終了・募集終了と明記されているもの
+- 過去のイベント報告・実績報告（「〇〇を開催しました」という過去形の記事）
+- 現在は利用できないサービス・制度
 
 【ページ内容】
 ${pageText}
@@ -113,21 +123,22 @@ ${pageText}
   "candidates": [
     {
       "title": "タイトル（40文字以内）",
-      "summary": "要約（150文字以内）",
+      "summary": "要約（200文字以内・補助金額・締切日・対象者など具体的な情報を含める）",
       "category": "${source.category || 'お知らせ・募集'}",
       "target_audience": "対象者",
       "event_date": "開催日（YYYY-MM-DD、なければnull）",
       "deadline": "締切（YYYY-MM-DD、なければnull）",
       "organizer": "主催者",
       "source_url": "${source.url}",
-      "region": "対象地域",
-      "ai_score": "LANDのSNS投稿としておすすめ度（1〜10）",
+      "region": "対象地域（全国/北海道/十勝/帯広）",
+      "ai_score": 現在有効・最新の情報としてのおすすめ度（1〜10の整数）,
       "ai_reason": "おすすめ理由（50文字以内）"
     }
   ]
 }
 
-情報が見つからない場合は candidates を空配列にしてください。`
+最新の有効な情報が見つからない場合は candidates を空配列にしてください。
+古い情報・終了した情報は絶対に含めないでください。`
         }],
         response_format: { type: 'json_object' },
         temperature: 0.3,
@@ -180,14 +191,29 @@ ${pageText}
 
   let savedCount = 0
   if (allCandidates.length > 0) {
+    // 締切日が過去のものを除外（念のため二重チェック）
+    const todayStr = new Date().toISOString().slice(0, 10)
+    const validCandidates = allCandidates.filter((c) => {
+      if (c.deadline && c.deadline < todayStr) return false   // 締切済み
+      if (c.event_date && c.event_date < todayStr) return false // 開催済み
+      return true
+    })
+
     // 既存タイトルを取得して重複を除外
-    const titles = allCandidates.map((c) => c.title)
+    const titles = validCandidates.map((c) => c.title)
+    if (titles.length === 0) return NextResponse.json({
+      sources_checked: targetSources.length,
+      candidates_found: allCandidates.length,
+      saved_count: 0,
+      results,
+    })
+
     const { data: existing } = await adminSupabase
       .from('post_candidates')
       .select('title')
       .in('title', titles)
     const existingTitles = new Set((existing || []).map((e: { title: string }) => e.title))
-    const newCandidates = allCandidates.filter((c) => !existingTitles.has(c.title))
+    const newCandidates = validCandidates.filter((c) => !existingTitles.has(c.title))
 
     if (newCandidates.length > 0) {
       const { data, error } = await adminSupabase
