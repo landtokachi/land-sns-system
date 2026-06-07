@@ -26,12 +26,13 @@ export function ImageGenerator({ candidate, initialImages, socialPost }: Props) 
   // タイトル: 候補タイトルそのままを使う（画像テンプレートが折り返すため長くてOK）
   const [imageTitle, setImageTitle] = useState(socialPost?.image_title || candidate.title)
   // サブ: AI生成のimage_subtitleか、要約の先頭
-  const [imageSubtitle, setImageSubtitle] = useState(
-    socialPost?.image_subtitle || candidate.ai_summary?.slice(0, 44) || ''
-  )
+  const [previewPngUrl, setPreviewPngUrl] = useState<string | null>(null)
+  const [dalleUsed, setDalleUsed] = useState(false)
 
   async function handleGenerate() {
     setGenerating(true)
+    setPreviewSvg(null)
+    setPreviewPngUrl(null)
     const res = await fetch('/api/images/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -40,11 +41,11 @@ export function ImageGenerator({ candidate, initialImages, socialPost }: Props) 
         template_type: templateType,
         image_data: {
           title: imageTitle,
-          subtitle: imageSubtitle,
+          subtitle: '',
           category: candidate.category || '',
           date: candidate.event_date || '',
           deadline: candidate.deadline || '',
-          amount: '', // 将来拡張用
+          amount: '',
           target_audience: candidate.target_audience || '',
           organizer: candidate.organizer || '',
           url: candidate.application_url || candidate.source_url || '',
@@ -53,7 +54,9 @@ export function ImageGenerator({ candidate, initialImages, socialPost }: Props) 
       }),
     })
     const data = await res.json()
-    if (data.svg) setPreviewSvg(data.svg)
+    setDalleUsed(!!data.dalle_used)
+    if (data.png_url) setPreviewPngUrl(data.png_url)
+    else if (data.svg) setPreviewSvg(data.svg)
 
     const supabase = (await import('@/lib/supabase/client')).createClient()
     const { data: refreshed } = await supabase
@@ -103,15 +106,6 @@ export function ImageGenerator({ candidate, initialImages, socialPost }: Props) 
           <p className="text-xs mt-1" style={{color:'#3a2a5a'}}>※ 長い場合は自動で折り返し。短く・インパクトある表現が効果的</p>
         </div>
 
-        {/* Subtitle */}
-        <div>
-          <label className="block text-xs font-semibold mb-1.5" style={{color:'#7c6fa8'}}>
-            サブテキスト（タイトル下に小さく表示）
-          </label>
-          <input value={imageSubtitle} onChange={e => setImageSubtitle(e.target.value)}
-            className="w-full px-3 py-2.5 text-sm rounded-xl" maxLength={44} placeholder="例: 最大〇〇万円補助 / 4月10日 無料参加"/>
-        </div>
-
         {/* Info chips */}
         <div className="grid grid-cols-2 gap-2 text-xs">
           {[
@@ -128,23 +122,39 @@ export function ImageGenerator({ candidate, initialImages, socialPost }: Props) 
           ))}
         </div>
 
+        <div className="p-3 rounded-xl text-xs" style={{background:'rgba(139,92,246,0.08)', border:'1px solid rgba(139,92,246,0.15)', color:'#a78bfa'}}>
+          ✨ AIがタイトルに合った背景画像を自動生成します（10〜20秒）
+        </div>
+
         <Button onClick={handleGenerate} loading={generating} size="lg">
-          🎨 画像を生成する
+          🎨 AI画像を生成する
         </Button>
       </div>
 
       {/* Preview */}
-      {previewSvg && (
+      {(previewPngUrl || previewSvg) && (
         <div className="glass-card p-5">
-          <h3 className="text-sm font-bold text-white mb-4">プレビュー</h3>
-          <div className="w-full max-w-xs mx-auto rounded-2xl overflow-hidden shadow-2xl"
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-bold text-white">プレビュー</h3>
+            {dalleUsed && (
+              <span className="text-xs px-2.5 py-1 rounded-full font-medium"
+                style={{background:'rgba(139,92,246,0.2)', color:'#c4b5fd', border:'1px solid rgba(139,92,246,0.3)'}}>
+                ✨ AI背景生成
+              </span>
+            )}
+          </div>
+          <div className="w-full max-w-xs mx-auto rounded-2xl overflow-hidden"
             style={{boxShadow:'0 12px 40px rgba(0,0,0,0.5)'}}>
-            <div dangerouslySetInnerHTML={{
-              __html: previewSvg.replace(
-                /width="1080" height="1080"/,
-                'width="100%" height="100%" viewBox="0 0 1080 1080"'
-              )
-            }} />
+            {previewPngUrl ? (
+              <img src={previewPngUrl} alt="生成済み画像" className="w-full" />
+            ) : previewSvg ? (
+              <div dangerouslySetInnerHTML={{
+                __html: previewSvg.replace(
+                  /width="1080" height="1080"/,
+                  'width="100%" height="100%" viewBox="0 0 1080 1080"'
+                )
+              }} />
+            ) : null}
           </div>
           <p className="text-xs text-center mt-3" style={{color:'#4a3a6a'}}>
             ※ 実際の画像は1080×1080pxで保存されます

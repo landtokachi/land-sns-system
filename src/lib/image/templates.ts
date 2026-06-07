@@ -112,9 +112,6 @@ export function generateSvgTemplate(data: ImageTextData): string {
   // 中央配置（少し上寄り）
   const startY = Math.round(540 - totalH / 2 + fs * 0.15)
 
-  // サブテキスト（あれば1行のみ、シンプルに）
-  const sub = data.subtitle ? data.subtitle.slice(0, 28) : ''
-
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1080" width="1080" height="1080">
 <defs>
 
@@ -209,19 +206,6 @@ ${lines.map((line, i) => `
   y="${startY + n * lh + 8}"
   width="100" height="4" rx="2"
   fill="${t.accent}" opacity="0.8"/>
-
-<!-- サブテキスト -->
-${sub ? `<text
-  x="540"
-  y="${startY + n * lh + 58}"
-  font-family="'Noto Sans JP',sans-serif"
-  font-size="32"
-  fill="${t.accent}"
-  text-anchor="middle"
-  opacity="0.85"
-  filter="url(#shadow)"
->${esc(sub)}</text>` : ''}
-
 
 <!-- ===========================
      BRANDING（最小限）
