@@ -13,11 +13,10 @@ html, body {
    ===================================================== */
 .app-bg {
   background:
-    radial-gradient(ellipse at 90% 40%, rgba(219, 39, 119, 0.28) 0%, transparent 42%),
-    radial-gradient(ellipse at 10% 70%, rgba(59, 130, 246, 0.22) 0%, transparent 38%),
-    radial-gradient(ellipse at 55% 5%,  rgba(124, 58, 237, 0.18) 0%, transparent 35%),
-    radial-gradient(ellipse at 40% 90%, rgba(99, 102, 241, 0.15) 0%, transparent 30%),
-    linear-gradient(150deg, #07090f 0%, #0c1220 25%, #0f103a 50%, #100824 75%, #0a0812 100%);
+    radial-gradient(ellipse at 88% 40%, rgba(219, 39, 119, 0.16) 0%, transparent 42%),
+    radial-gradient(ellipse at 12% 70%, rgba(59, 130, 246, 0.14) 0%, transparent 38%),
+    radial-gradient(ellipse at 55% 5%,  rgba(124, 58, 237, 0.12) 0%, transparent 35%),
+    linear-gradient(150deg, #141726 0%, #181a35 30%, #1a1240 58%, #160e2e 82%, #131222 100%);
   background-attachment: fixed;
   min-height: 100vh;
 }

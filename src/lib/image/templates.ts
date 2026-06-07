@@ -12,175 +12,180 @@ export interface ImageTextData {
   template_type: string
 }
 
-// カテゴリ別カラー設定
+// カテゴリ別テーマ — LANDのSNS投稿スタイルに準拠
 const THEMES: Record<string, {
-  bg1: string; bg2: string; bg3: string;
-  accent: string; accent2: string;
-  label: string;
+  bg: string[]       // グラデーション停止点カラー
+  accent: string     // アクセントカラー
+  accent2: string    // サブアクセント
+  labelBg: string    // カテゴリバッジ背景
+  label: string      // デフォルトラベル
+  shape: string      // 装飾シェイプカラー
 }> = {
   subsidy: {
-    bg1: '#0a0e1a', bg2: '#0d1f3c', bg3: '#112244',
-    accent: '#f59e0b', accent2: '#fbbf24',
-    label: '補助金・助成金',
+    bg: ['#0a0f2e', '#1a1060', '#0d1a50'],
+    accent: '#fbbf24', accent2: '#f59e0b',
+    labelBg: '#f59e0b', label: '補助金・助成金',
+    shape: 'rgba(251,191,36,0.12)',
   },
   event: {
-    bg1: '#060d1a', bg2: '#0a1f2e', bg3: '#0e2a3a',
-    accent: '#06b6d4', accent2: '#22d3ee',
-    label: 'イベント・セミナー',
+    bg: ['#050f1a', '#0a2540', '#062030'],
+    accent: '#34d399', accent2: '#10b981',
+    labelBg: '#10b981', label: 'イベント・セミナー',
+    shape: 'rgba(52,211,153,0.12)',
   },
   land: {
-    bg1: '#0a0617', bg2: '#110a2e', bg3: '#150e3a',
-    accent: '#8b5cf6', accent2: '#a78bfa',
-    label: 'LANDの取り組み',
+    bg: ['#0c0620', '#1a0a50', '#120840'],
+    accent: '#c084fc', accent2: '#a855f7',
+    labelBg: '#9333ea', label: 'LANDの取り組み',
+    shape: 'rgba(192,132,252,0.12)',
   },
   business: {
-    bg1: '#060a18', bg2: '#0a1428', bg3: '#0e1e38',
-    accent: '#3b82f6', accent2: '#60a5fa',
-    label: '事業者紹介',
+    bg: ['#060c1e', '#0e1e3c', '#0a1830'],
+    accent: '#60a5fa', accent2: '#3b82f6',
+    labelBg: '#2563eb', label: '事業者紹介',
+    shape: 'rgba(96,165,250,0.12)',
   },
   notice: {
-    bg1: '#0f0a06', bg2: '#1f1008', bg3: '#2a160a',
-    accent: '#f97316', accent2: '#fb923c',
-    label: 'お知らせ',
+    bg: ['#100606', '#280e0e', '#1a0808'],
+    accent: '#f87171', accent2: '#ef4444',
+    labelBg: '#dc2626', label: 'お知らせ',
+    shape: 'rgba(248,113,113,0.12)',
   },
 }
 
 export function generateSvgTemplate(data: ImageTextData): string {
-  const theme = THEMES[data.template_type] || THEMES.notice
+  const t = THEMES[data.template_type] || THEMES.notice
+  const catLabel = data.category || t.label
 
-  const titleLines = wrapText(data.title, 18)
-  const points = data.points?.slice(0, 3) || []
+  // タイトルを折り返し（1行あたり最大13文字）
+  const titleLines = wrapText(data.title, 13)
+  const fontSize = titleLines.length === 1 ? 88 : titleLines.length === 2 ? 76 : 64
 
-  // 日付文字列の整形
-  const dateDisplay = data.date || data.deadline || ''
+  // 情報ブロック
+  const infoItems: Array<{icon: string; text: string}> = []
+  if (data.date) infoItems.push({ icon: '📅', text: data.date })
+  if (data.deadline && data.deadline !== data.date) infoItems.push({ icon: '⏰', text: `締切: ${data.deadline}` })
+  if (data.amount) infoItems.push({ icon: '💰', text: data.amount })
+  if (data.target_audience) infoItems.push({ icon: '👥', text: data.target_audience.slice(0, 18) })
+  if (data.organizer) infoItems.push({ icon: '🏢', text: data.organizer.slice(0, 20) })
+  const displayItems = infoItems.slice(0, 4)
+
+  const titleStartY = 300 - (titleLines.length - 1) * (fontSize / 2)
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1080" viewBox="0 0 1080 1080">
   <defs>
-    <linearGradient id="bgG" x1="0" y1="0" x2="0.7" y2="1">
-      <stop offset="0%" stop-color="${theme.bg1}"/>
-      <stop offset="50%" stop-color="${theme.bg2}"/>
-      <stop offset="100%" stop-color="${theme.bg3}"/>
+    <linearGradient id="bg" x1="0" y1="0" x2="0.5" y2="1">
+      <stop offset="0%" stop-color="${t.bg[0]}"/>
+      <stop offset="55%" stop-color="${t.bg[1]}"/>
+      <stop offset="100%" stop-color="${t.bg[2]}"/>
     </linearGradient>
-    <linearGradient id="accentG" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0%" stop-color="${theme.accent}"/>
-      <stop offset="100%" stop-color="${theme.accent2}"/>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="${t.accent}"/>
+      <stop offset="100%" stop-color="${t.accent2}"/>
     </linearGradient>
-    <linearGradient id="glowG" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="${theme.accent}" stop-opacity="0.3"/>
-      <stop offset="100%" stop-color="${theme.accent}" stop-opacity="0"/>
+    <linearGradient id="titleGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="${t.accent}"/>
     </linearGradient>
-    <filter id="glow">
-      <feGaussianBlur stdDeviation="8" result="coloredBlur"/>
-      <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="12" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
     </filter>
-    <filter id="softglow">
-      <feGaussianBlur stdDeviation="20" result="coloredBlur"/>
-      <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    <filter id="softBlur">
+      <feGaussianBlur stdDeviation="40"/>
     </filter>
+    <clipPath id="roundRect">
+      <rect width="1080" height="1080" rx="0"/>
+    </clipPath>
   </defs>
 
   <!-- Background -->
-  <rect width="1080" height="1080" fill="url(#bgG)"/>
+  <rect width="1080" height="1080" fill="url(#bg)"/>
 
-  <!-- Ambient glow circles -->
-  <circle cx="900" cy="150" r="300" fill="${theme.accent}" opacity="0.06"/>
-  <circle cx="100" cy="950" r="250" fill="${theme.accent2}" opacity="0.05"/>
-  <circle cx="540" cy="540" r="400" fill="${theme.accent}" opacity="0.03"/>
+  <!-- Large ambient glow circles (LAND style decorations) -->
+  <circle cx="860" cy="200" r="320" fill="${t.accent}" opacity="0.07" filter="url(#softBlur)"/>
+  <circle cx="150" cy="880" r="280" fill="${t.accent2}" opacity="0.08" filter="url(#softBlur)"/>
+  <circle cx="540" cy="540" r="500" fill="${t.shape.replace('0.12', '0.04')}" filter="url(#softBlur)"/>
 
-  <!-- Top decorative bar -->
-  <rect x="0" y="0" width="1080" height="6" fill="url(#accentG)"/>
+  <!-- Geometric decorations -->
+  <polygon points="1080,0 1080,400 700,0" fill="${t.accent}" opacity="0.06"/>
+  <polygon points="0,1080 0,750 280,1080" fill="${t.accent2}" opacity="0.05"/>
 
-  <!-- Geometric decoration - top right -->
-  <polygon points="800,0 1080,0 1080,280" fill="${theme.accent}" opacity="0.07"/>
-  <polygon points="850,0 1080,0 1080,230" fill="${theme.accent2}" opacity="0.05"/>
+  <!-- Top accent bar -->
+  <rect x="0" y="0" width="1080" height="6" fill="url(#accent)" rx="0"/>
 
-  <!-- Top section: LAND branding -->
-  <text x="60" y="72" font-family="'Arial', sans-serif" font-size="22" font-weight="900" letter-spacing="6" fill="${theme.accent}" filter="url(#glow)">LAND</text>
-  <text x="148" y="72" font-family="'Noto Sans JP', sans-serif" font-size="18" fill="rgba(255,255,255,0.3)">とかち財団</text>
+  <!-- Left accent bar -->
+  <rect x="0" y="0" width="5" height="1080" fill="url(#accent)" opacity="0.6"/>
+
+  <!-- Decorative circle outline top-right -->
+  <circle cx="980" cy="120" r="90" fill="none" stroke="${t.accent}" stroke-width="1.5" opacity="0.2"/>
+  <circle cx="980" cy="120" r="60" fill="none" stroke="${t.accent}" stroke-width="1" opacity="0.15"/>
+
+  <!-- Circle outline bottom-left -->
+  <circle cx="100" cy="960" r="70" fill="none" stroke="${t.accent2}" stroke-width="1.5" opacity="0.15"/>
+
+  <!-- LAND branding top-left -->
+  <text x="56" y="72" font-family="Arial, sans-serif" font-size="26" font-weight="900" letter-spacing="8" fill="${t.accent}" filter="url(#glow)" opacity="0.9">LAND</text>
+  <text x="56" y="98" font-family="'Noto Sans JP', sans-serif" font-size="16" fill="rgba(255,255,255,0.3)" letter-spacing="1">公益財団法人とかち財団</text>
 
   <!-- Category badge -->
-  <rect x="60" y="95" width="${(data.category || theme.label).length * 18 + 48}" height="44" rx="22" fill="url(#accentG)" opacity="0.9"/>
-  <text x="${60 + (data.category || theme.label).length * 9 + 24}" y="123" font-family="'Noto Sans JP', sans-serif" font-size="20" font-weight="700" fill="#ffffff" text-anchor="middle">${escapeXml(data.category || theme.label)}</text>
+  <rect x="56" y="118" width="${catLabel.length * 20 + 40}" height="42" rx="21" fill="${t.labelBg}"/>
+  <text x="${56 + catLabel.length * 10 + 20}" y="145" font-family="'Noto Sans JP', sans-serif" font-size="19" font-weight="700" fill="white" text-anchor="middle">${escapeXml(catLabel)}</text>
 
-  <!-- Main title area - large bold text -->
+  <!-- MAIN TITLE — Large & bold, gradient -->
   ${titleLines.map((line, i) => `
-  <text x="60" y="${220 + i * 82}" font-family="'Noto Sans JP', sans-serif" font-size="${titleLines.length <= 2 ? 72 : titleLines.length <= 3 ? 62 : 54}" font-weight="900" fill="#ffffff" filter="url(#softglow)">${escapeXml(line)}</text>`).join('')}
+  <text x="56" y="${titleStartY + i * (fontSize + 12)}"
+    font-family="'Noto Sans JP', 'Yu Gothic', sans-serif"
+    font-size="${fontSize}"
+    font-weight="900"
+    fill="url(#titleGrad)"
+    filter="url(#glow)"
+    letter-spacing="2">${escapeXml(line)}</text>`).join('')}
 
-  <!-- Accent line under title -->
-  <rect x="60" y="${220 + titleLines.length * 82 - 10}" width="120" height="5" rx="2.5" fill="url(#accentG)"/>
+  <!-- Subtitle -->
+  ${data.subtitle ? `
+  <text x="56" y="${titleStartY + titleLines.length * (fontSize + 12) + 20}"
+    font-family="'Noto Sans JP', sans-serif"
+    font-size="34"
+    fill="${t.accent}"
+    opacity="0.9">${escapeXml(data.subtitle.slice(0, 24))}</text>` : ''}
 
-  <!-- Subtitle / description -->
-  ${data.subtitle ? (() => {
-    const subLines = wrapText(data.subtitle, 26)
-    const subY = 220 + titleLines.length * 82 + 30
-    return subLines.map((l, i) => `<text x="60" y="${subY + i * 44}" font-family="'Noto Sans JP', sans-serif" font-size="34" fill="rgba(255,255,255,0.75)">${escapeXml(l)}</text>`).join('\n  ')
-  })() : ''}
+  <!-- Divider line -->
+  <rect x="56" y="660" width="968" height="2" fill="url(#accent)" opacity="0.4" rx="1"/>
 
-  <!-- Key info cards -->
-  ${buildInfoCards(data, theme)}
-
-  <!-- Points / highlights -->
-  ${points.length > 0 ? buildPoints(points, theme, titleLines.length, data) : ''}
-
-  <!-- Bottom footer -->
-  <rect x="0" y="940" width="1080" height="140" fill="rgba(0,0,0,0.4)"/>
-  <rect x="0" y="940" width="1080" height="3" fill="url(#accentG)" opacity="0.6"/>
-
-  <!-- LAND logo text in footer -->
-  <rect x="60" y="965" width="90" height="90" rx="16" fill="${theme.accent}" opacity="0.15"/>
-  <rect x="61" y="966" width="88" height="88" rx="15" fill="none" stroke="${theme.accent}" stroke-width="1.5" opacity="0.4"/>
-  <text x="105" y="1018" font-family="'Arial', sans-serif" font-size="28" font-weight="900" fill="${theme.accent}" text-anchor="middle" filter="url(#glow)">L</text>
-
-  <text x="175" y="994" font-family="'Arial', sans-serif" font-size="30" font-weight="900" letter-spacing="4" fill="#ffffff">LAND</text>
-  <text x="175" y="1022" font-family="'Noto Sans JP', sans-serif" font-size="16" fill="rgba(255,255,255,0.4)">スタートアップ支援スペース</text>
-  <text x="175" y="1044" font-family="'Noto Sans JP', sans-serif" font-size="14" fill="rgba(255,255,255,0.25)">公益財団法人とかち財団｜帯広市</text>
-
-  <!-- Instagram handle -->
-  <text x="1020" y="994" font-family="'Arial', sans-serif" font-size="17" fill="${theme.accent}" text-anchor="end" opacity="0.8">@land.tokachi</text>
-  <text x="1020" y="1016" font-family="'Arial', sans-serif" font-size="14" fill="rgba(255,255,255,0.25)" text-anchor="end">Instagram / Facebook / X</text>
-</svg>`
-}
-
-function buildInfoCards(data: ImageTextData, theme: {accent:string;accent2:string}): string {
-  const items: Array<{icon:string; label:string; value:string}> = []
-
-  if (data.date) items.push({ icon: '📅', label: '開催日・期間', value: data.date })
-  if (data.deadline && data.deadline !== data.date) items.push({ icon: '⏰', label: '申込締切', value: data.deadline })
-  if (data.amount) items.push({ icon: '💰', label: '補助金額・補助率', value: data.amount })
-  if (data.target_audience) items.push({ icon: '👥', label: '対象者', value: data.target_audience.slice(0, 20) })
-  if (data.organizer) items.push({ icon: '🏢', label: '主催・実施機関', value: data.organizer.slice(0, 22) })
-
-  if (items.length === 0) return ''
-
-  const cardW = 460
-  const cardH = 80
-  const colGap = 40
-  const startY = 600
-
-  return items.slice(0, 4).map((item, i) => {
+  <!-- Info blocks (2 columns) -->
+  ${displayItems.map((item, i) => {
     const col = i % 2
     const row = Math.floor(i / 2)
-    const x = 60 + col * (cardW + colGap)
-    const y = startY + row * (cardH + 16)
+    const x = 56 + col * 500
+    const y = 680 + row * 90
     return `
-  <rect x="${x}" y="${y}" width="${cardW}" height="${cardH}" rx="12" fill="rgba(255,255,255,0.05)" stroke="${theme.accent}" stroke-width="1" stroke-opacity="0.2"/>
-  <text x="${x + 20}" y="${y + 28}" font-family="sans-serif" font-size="22">${item.icon}</text>
-  <text x="${x + 52}" y="${y + 30}" font-family="'Noto Sans JP', sans-serif" font-size="15" fill="rgba(255,255,255,0.4)">${escapeXml(item.label)}</text>
-  <text x="${x + 20}" y="${y + 60}" font-family="'Noto Sans JP', sans-serif" font-size="22" font-weight="700" fill="#ffffff">${escapeXml(item.value)}</text>`
-  }).join('\n')
-}
+  <rect x="${x}" y="${y}" width="470" height="74" rx="12"
+    fill="${t.shape}" stroke="${t.accent}" stroke-width="1" stroke-opacity="0.2"/>
+  <text x="${x + 20}" y="${y + 27}" font-family="sans-serif" font-size="24">${item.icon}</text>
+  <text x="${x + 52}" y="${y + 30}" font-family="'Noto Sans JP', sans-serif" font-size="14" fill="${t.accent}" opacity="0.7">${item.text.includes('締切') ? '申込締切' : item.text.includes('💰') ? '補助金額' : item.text.includes('👥') ? '対象者' : item.text.includes('🏢') ? '主催機関' : '開催日時'}</text>
+  <text x="${x + 20}" y="${y + 58}" font-family="'Noto Sans JP', sans-serif" font-size="24" font-weight="700" fill="white">${escapeXml(item.text.replace(/^[^\s]+ /, ''))}</text>`
+  }).join('')}
 
-function buildPoints(points: string[], theme: {accent:string;accent2:string}, titleLen: number, data: ImageTextData): string {
-  // If info cards are shown, don't show points (space conflict)
-  const hasCards = data.date || data.deadline || data.amount || data.target_audience || data.organizer
-  if (hasCards) return ''
+  <!-- Bottom footer bar -->
+  <rect x="0" y="940" width="1080" height="140" fill="rgba(0,0,0,0.5)"/>
+  <rect x="0" y="940" width="1080" height="2" fill="url(#accent)" opacity="0.5"/>
 
-  const startY = 490 + titleLen * 40
-  return points.map((pt, i) => `
-  <rect x="60" y="${startY + i * 76}" width="960" height="64" rx="12" fill="rgba(255,255,255,0.05)" stroke="${theme.accent}" stroke-width="1" stroke-opacity="0.15"/>
-  <rect x="60" y="${startY + i * 76}" width="5" height="64" rx="2.5" fill="${theme.accent}"/>
-  <text x="84" y="${startY + i * 76 + 40}" font-family="'Noto Sans JP', sans-serif" font-size="26" font-weight="600" fill="#ffffff">${escapeXml(pt)}</text>`
-  ).join('\n')
+  <!-- Footer left: LAND logo block -->
+  <rect x="52" y="958" width="84" height="84" rx="14"
+    fill="${t.accent}" opacity="0.15" stroke="${t.accent}" stroke-width="1" stroke-opacity="0.3"/>
+  <text x="94" y="1010" font-family="Arial, sans-serif" font-size="32" font-weight="900"
+    fill="${t.accent}" text-anchor="middle" filter="url(#glow)">L</text>
+
+  <text x="154" y="988" font-family="Arial, sans-serif" font-size="28" font-weight="900" letter-spacing="4" fill="white">LAND</text>
+  <text x="154" y="1012" font-family="'Noto Sans JP', sans-serif" font-size="15" fill="rgba(255,255,255,0.4)">スタートアップ支援スペース</text>
+  <text x="154" y="1032" font-family="'Noto Sans JP', sans-serif" font-size="13" fill="rgba(255,255,255,0.25)">帯広市|公益財団法人とかち財団</text>
+
+  <!-- Footer right: SNS handle -->
+  <text x="1028" y="990" font-family="Arial, sans-serif" font-size="18" fill="${t.accent}" text-anchor="end" opacity="0.8">@land.tokachi</text>
+  <text x="1028" y="1014" font-family="'Noto Sans JP', sans-serif" font-size="13" fill="rgba(255,255,255,0.25)" text-anchor="end">Instagram / Facebook / X</text>
+  <text x="1028" y="1034" font-family="'Noto Sans JP', sans-serif" font-size="12" fill="rgba(255,255,255,0.18)" text-anchor="end">land-sns-system.vercel.app</text>
+</svg>`
 }
 
 function wrapText(text: string, maxChars: number): string[] {
