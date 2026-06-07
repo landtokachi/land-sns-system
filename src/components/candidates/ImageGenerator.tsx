@@ -54,7 +54,7 @@ export function ImageGenerator({ candidate, initialImages, socialPost }: Props) 
       }),
     })
     const data = await res.json()
-    setDalleUsed(!!data.dalle_used)
+    setDalleUsed(!!data.photo_used)
     if (data.png_url) setPreviewPngUrl(data.png_url)
     else if (data.svg) setPreviewSvg(data.svg)
 
@@ -122,8 +122,8 @@ export function ImageGenerator({ candidate, initialImages, socialPost }: Props) 
           ))}
         </div>
 
-        <div className="p-3 rounded-xl text-xs" style={{background:'rgba(139,92,246,0.08)', border:'1px solid rgba(139,92,246,0.15)', color:'#a78bfa'}}>
-          ✨ AIがタイトルに合った背景画像を自動生成します（10〜20秒）
+        <div className="p-3 rounded-xl text-xs" style={{background:'rgba(99,102,241,0.06)', border:'1px solid rgba(99,102,241,0.15)', color:'#6366f1'}}>
+          📸 タイトルに合ったリアルな写真を背景に使用します（5〜10秒）
         </div>
 
         <Button onClick={handleGenerate} loading={generating} size="lg">

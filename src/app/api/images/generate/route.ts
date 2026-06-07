@@ -2,111 +2,134 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { type ImageTextData } from '@/lib/image/templates'
-import OpenAI from 'openai'
 import sharp from 'sharp'
 
-// Vercel Hobby: 60秒まで延長（DALL-E生成に必要）
 export const maxDuration = 60
-
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
 const adminClient = createSupabaseClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-// ─── DALL-E 3用プロンプトをGPTで生成 ───────────────────────────────
-async function buildDallePrompt(title: string, category: string): Promise<string> {
-  const res = await openai.chat.completions.create({
-    model: 'gpt-4o-mini',
-    messages: [{
-      role: 'user',
-      content: `You are a visual designer for a Japanese startup support facility "LAND" in Obihiro, Hokkaido.
-Create a DALL-E 3 image generation prompt in English for an Instagram post background image.
+// ─── カテゴリ別 Unsplash 検索キーワード ────────────────────────────
+function getUnsplashKeywords(category: string, title: string): string {
+  const t = title
 
-Post title (Japanese): ${title}
-Category: ${category}
+  // タイトルから具体的なキーワードを抽出
+  if (t.includes('農業') || t.includes('農') || t.includes('食') || t.includes('畜産')) {
+    return 'hokkaido,farm,agriculture,japan'
+  }
+  if (t.includes('IT') || t.includes('DX') || t.includes('デジタル') || t.includes('テクノロジー')) {
+    return 'technology,laptop,digital,office'
+  }
+  if (t.includes('起業') || t.includes('創業') || t.includes('スタートアップ')) {
+    return 'startup,entrepreneur,business,japan'
+  }
+  if (t.includes('観光') || t.includes('旅行') || t.includes('インバウンド')) {
+    return 'hokkaido,travel,tourism,landscape'
+  }
+  if (t.includes('女性') || t.includes('ウーマン')) {
+    return 'woman,business,professional,japan'
+  }
+  if (t.includes('若者') || t.includes('学生') || t.includes('ユース')) {
+    return 'young,student,university,japan'
+  }
+  if (t.includes('地域') || t.includes('まちづくり') || t.includes('コミュニティ')) {
+    return 'community,japan,town,people'
+  }
+  if (t.includes('ものづくり') || t.includes('製造') || t.includes('工場') || t.includes('技術')) {
+    return 'manufacturing,factory,craftsmanship,japan'
+  }
+  if (t.includes('環境') || t.includes('省エネ') || t.includes('カーボン') || t.includes('SDGs')) {
+    return 'environment,green,sustainable,nature'
+  }
+  if (t.includes('セミナー') || t.includes('研修') || t.includes('講座')) {
+    return 'seminar,conference,business,meeting'
+  }
+  if (t.includes('イベント') || t.includes('フォーラム') || t.includes('シンポジウム')) {
+    return 'event,conference,hall,people'
+  }
 
-Requirements:
-- The image must have STRONG VISUAL SUBJECT directly related to the title topic
-- Include realistic photo OR vivid illustration with relevant objects/people/scenes
-- Examples by category:
-  * 補助金・助成金: Japanese businesspeople reviewing documents, stacks of coins/banknotes, professional office with plants, hands holding a contract, calculator and graphs
-  * イベント・セミナー: Conference hall with audience, presentation stage with spotlight, people networking at a business event, seminar room with participants
-  * LAND・コワーキング: Modern coworking space interior, entrepreneurs working at laptops, startup team brainstorming, Obihiro Hokkaido cityscape
-  * 事業者紹介: Artisan working in workshop, chef in restaurant kitchen, farmer in Hokkaido field, entrepreneur at their business
-  * 採択者・学生起業: Young students presenting ideas, pitch competition stage, university students working together
-  * 農業・食: Vast Hokkaido agricultural fields, fresh vegetables/livestock, food processing, farmers
-  * 技能・訓練: Skilled craftsperson working, training workshop, hands-on technical work
-  * 地域・まちづくり: Obihiro city street, local community gathering, town development scene
+  // カテゴリ別フォールバック
+  if (category.includes('補助金') || category.includes('助成')) {
+    return 'business,office,documents,japan'
+  }
+  if (category.includes('イベント') || category.includes('セミナー')) {
+    return 'conference,seminar,presentation,japan'
+  }
+  if (category.includes('LAND') || category.includes('とかち')) {
+    return 'hokkaido,obihiro,coworking,startup'
+  }
+  if (category.includes('事業者')) {
+    return 'business,entrepreneur,shop,japan'
+  }
 
-Style: cinematic photography or vivid illustration, dramatic lighting, rich colors, professional quality
-CRITICAL: No text, no letters, no watermarks anywhere in the image
-Faces can be shown but blurred/from behind is preferred
-Make it visually rich and interesting - NOT just abstract gradients
-
-Return ONLY the prompt text, nothing else.`,
-    }],
-    temperature: 0.9,
-    max_tokens: 250,
-  })
-  return res.choices[0].message.content?.trim() ||
-    'Japanese business professionals in a modern Hokkaido office, dramatic cinematic lighting, rich colors, no text'
+  return 'japan,business,professional,office'
 }
 
-// ─── タイトルオーバーレイSVG（背景が見えつつ文字も読める）─────────────
+// ─── アクセントカラー（カテゴリ別） ─────────────────────────────────
+function getAccentColor(templateType: string, category: string): string {
+  if (templateType === 'subsidy' || category?.includes('補助金')) return '#fbbf24'
+  if (templateType === 'event'   || category?.includes('イベント')) return '#818cf8'
+  if (templateType === 'land'    || category?.includes('LAND'))     return '#fcd34d'
+  if (templateType === 'business'|| category?.includes('事業者'))   return '#c4b5fd'
+  return '#38bdf8'
+}
+
+// ─── タイトルオーバーレイSVG ─────────────────────────────────────────
 function generateOverlaySvg(title: string, accentColor: string): string {
-  const lines = wrapJa(title, 8)
+  const lines = wrapJa(title, 9)
   const n = lines.length
-  const fs = n === 1 ? 118 : n === 2 ? 100 : n === 3 ? 84 : 72
+  const fs = n === 1 ? 115 : n === 2 ? 98 : n === 3 ? 82 : 70
   const lh = fs * 1.25
   const startY = Math.round(540 - (n * lh) / 2 + fs * 0.15)
 
-  // テキスト背景ブロックの位置・サイズ
-  const blockTop = startY - fs * 0.85
-  const blockH = n * lh + fs * 0.6
-
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1080" width="1080" height="1080">
 <defs>
-  <!-- 全体の軽いダークベール（背景を少し落ち着かせる） -->
-  <linearGradient id="veil" x1="0" y1="0" x2="0" y2="1">
-    <stop offset="0%"   stop-color="rgba(0,0,0,0.12)"/>
-    <stop offset="40%"  stop-color="rgba(0,0,0,0.20)"/>
-    <stop offset="70%"  stop-color="rgba(0,0,0,0.38)"/>
-    <stop offset="100%" stop-color="rgba(0,0,0,0.55)"/>
+  <!-- 上部を少し暗く -->
+  <linearGradient id="top" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%"   stop-color="rgba(0,0,0,0.40)"/>
+    <stop offset="30%"  stop-color="rgba(0,0,0,0.10)"/>
+    <stop offset="100%" stop-color="rgba(0,0,0,0)"/>
   </linearGradient>
-  <!-- テキスト背後のブロック（半透明の暗い帯） -->
-  <linearGradient id="textBg" x1="0" y1="0" x2="0" y2="1">
-    <stop offset="0%"   stop-color="rgba(0,0,0,0.0)"/>
-    <stop offset="20%"  stop-color="rgba(0,0,0,0.45)"/>
-    <stop offset="50%"  stop-color="rgba(0,0,0,0.62)"/>
-    <stop offset="80%"  stop-color="rgba(0,0,0,0.45)"/>
-    <stop offset="100%" stop-color="rgba(0,0,0,0.0)"/>
+  <!-- テキスト部分を暗く（背景が見えつつ文字が読める） -->
+  <linearGradient id="mid" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%"   stop-color="rgba(0,0,0,0)"/>
+    <stop offset="20%"  stop-color="rgba(0,0,0,0.50)"/>
+    <stop offset="50%"  stop-color="rgba(0,0,0,0.68)"/>
+    <stop offset="80%"  stop-color="rgba(0,0,0,0.50)"/>
+    <stop offset="100%" stop-color="rgba(0,0,0,0)"/>
   </linearGradient>
-  <!-- 強いテキストシャドウ -->
-  <filter id="ts" x="-10%" y="-25%" width="120%" height="150%">
-    <feDropShadow dx="0" dy="2" stdDeviation="8" flood-color="rgba(0,0,0,1.0)"/>
-    <feDropShadow dx="0" dy="0" stdDeviation="16" flood-color="rgba(0,0,0,0.7)"/>
-  </filter>
+  <!-- 下部を暗く（ブランディング用） -->
+  <linearGradient id="bot" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%"   stop-color="rgba(0,0,0,0)"/>
+    <stop offset="100%" stop-color="rgba(0,0,0,0.72)"/>
+  </linearGradient>
   <!-- アクセントグラデーション -->
   <linearGradient id="acc" x1="0" y1="0" x2="1" y2="0">
     <stop offset="0%"   stop-color="${accentColor}"/>
     <stop offset="100%" stop-color="${accentColor}66"/>
   </linearGradient>
-  <!-- LANDバッジ用 -->
-  <filter id="bts" x="-20%" y="-40%" width="140%" height="180%">
-    <feDropShadow dx="0" dy="1" stdDeviation="4" flood-color="rgba(0,0,0,0.8)"/>
+  <!-- 強いテキストシャドウ -->
+  <filter id="ts" x="-10%" y="-25%" width="120%" height="150%">
+    <feDropShadow dx="0" dy="2" stdDeviation="8"  flood-color="rgba(0,0,0,1.0)"/>
+    <feDropShadow dx="0" dy="0" stdDeviation="18" flood-color="rgba(0,0,0,0.7)"/>
+  </filter>
+  <filter id="bs" x="-5%" y="-10%" width="110%" height="120%">
+    <feDropShadow dx="0" dy="1" stdDeviation="4" flood-color="rgba(0,0,0,0.9)"/>
   </filter>
 </defs>
 
-<!-- 1: 全体ベール（背景が透けて見える薄暗め） -->
-<rect width="1080" height="1080" fill="url(#veil)"/>
+<!-- 上部オーバーレイ -->
+<rect width="1080" height="320" fill="url(#top)"/>
 
-<!-- 2: テキスト帯（中央付近を少し暗く - 背景残しつつ文字読みやすく） -->
-<rect x="0" y="${blockTop - 40}" width="1080" height="${blockH + 80}"
-  fill="url(#textBg)"/>
+<!-- テキスト帯（中央） -->
+<rect x="0" y="${startY - fs * 0.9}" width="1080" height="${n * lh + fs * 1.2}" fill="url(#mid)"/>
 
-<!-- 3: タイトルテキスト（白・大文字） -->
+<!-- 下部オーバーレイ（下1/3） -->
+<rect x="0" y="720" width="1080" height="360" fill="url(#bot)"/>
+
+<!-- タイトルテキスト -->
 ${lines.map((line, i) => `<text
   x="540" y="${startY + i * lh}"
   font-family="'Noto Sans JP','Hiragino Kaku Gothic ProN','Yu Gothic Bold',sans-serif"
@@ -114,40 +137,22 @@ ${lines.map((line, i) => `<text
   fill="white" text-anchor="middle" letter-spacing="3"
   filter="url(#ts)">${esc(line)}</text>`).join('\n')}
 
-<!-- 4: アクセントライン -->
-<rect x="${540 - 48}" y="${startY + n * lh + 12}"
-  width="96" height="4" rx="2" fill="url(#acc)" opacity="0.9"/>
+<!-- アクセントライン -->
+<rect x="${540 - 52}" y="${startY + n * lh + 14}"
+  width="104" height="5" rx="2.5" fill="url(#acc)"/>
 
-<!-- 5: 底部グラデーション（下1/4を暗く） -->
-<rect x="0" y="810" width="1080" height="270" fill="rgba(0,0,0,0)" style=""/>
-<linearGradient id="bottom" x1="0" y1="0" x2="0" y2="1">
-  <stop offset="0%"   stop-color="rgba(0,0,0,0)"/>
-  <stop offset="100%" stop-color="rgba(0,0,0,0.65)"/>
-</linearGradient>
-<rect x="0" y="810" width="1080" height="270" fill="url(#bottom)"/>
+<!-- LAND（左上） -->
+<text x="46" y="58"
+  font-family="Arial,sans-serif" font-size="20" font-weight="900"
+  letter-spacing="5" fill="white" opacity="0.70"
+  filter="url(#bs)">LAND</text>
 
-<!-- 6: LAND（左上） -->
-<text x="44" y="54"
-  font-family="Arial,sans-serif"
-  font-size="22" font-weight="900" letter-spacing="5"
-  fill="white" opacity="0.70"
-  filter="url(#bts)">LAND</text>
-
-<!-- 7: @land.tokachi（右下） -->
-<text x="1036" y="1050"
-  font-family="Arial,sans-serif"
-  font-size="18" fill="white" text-anchor="end" opacity="0.60"
-  filter="url(#bts)">@land.tokachi</text>
+<!-- @land.tokachi（右下） -->
+<text x="1034" y="1050"
+  font-family="Arial,sans-serif" font-size="17"
+  fill="white" text-anchor="end" opacity="0.60"
+  filter="url(#bs)">@land.tokachi</text>
 </svg>`
-}
-
-// カテゴリ別アクセントカラー
-function getAccentColor(category: string, templateType: string): string {
-  if (templateType === 'subsidy' || category?.includes('補助金')) return '#6ee7b7'
-  if (templateType === 'event' || category?.includes('イベント')) return '#c7d2fe'
-  if (templateType === 'land' || category?.includes('LAND')) return '#fde68a'
-  if (templateType === 'business' || category?.includes('事業者')) return '#ddd6fe'
-  return '#bae6fd'
 }
 
 function wrapJa(text: string, max: number): string[] {
@@ -183,118 +188,98 @@ export async function POST(request: NextRequest) {
     const title = image_data.title
     const category = image_data.category || ''
     const timestamp = Date.now()
-    const accent = getAccentColor(category, template_type)
+    const accent = getAccentColor(template_type, category)
 
-    // ── STEP 1: DALL-E 3で背景画像を生成 ──
+    // ── STEP 1: Unsplash から写真を取得 ──
     let bgBuffer: Buffer | null = null
-    let dallePrompt = ''
-    try {
-      console.log('[Image] Building DALL-E prompt for:', title)
-      dallePrompt = await buildDallePrompt(title, category)
-      console.log('[Image] DALL-E prompt:', dallePrompt.slice(0, 100))
+    let photoSource = ''
 
-      console.log('[Image] Calling DALL-E 3...')
-      const dalleRes = await openai.images.generate({
-        model: 'dall-e-3',
-        prompt: dallePrompt + '. No text, no letters, no words anywhere in the image.',
-        size: '1024x1024',
-        quality: 'standard',
-        n: 1,
+    try {
+      const keywords = getUnsplashKeywords(category, title)
+      // Unsplashのランダム写真エンドポイント（APIキー不要）
+      // タイムスタンプでキャッシュを回避して毎回異なる写真に
+      const unsplashUrl = `https://source.unsplash.com/1080x1080/?${encodeURIComponent(keywords)}&t=${timestamp}`
+      console.log('[Image] Fetching Unsplash photo:', keywords)
+
+      const photoRes = await fetch(unsplashUrl, {
+        signal: AbortSignal.timeout(15000),
+        headers: { 'User-Agent': 'LAND-SNS-System/1.0' },
       })
 
-      const dalleUrl = dalleRes.data?.[0]?.url
-      console.log('[Image] DALL-E URL:', dalleUrl ? 'received' : 'null')
-
-      if (dalleUrl) {
-        console.log('[Image] Downloading DALL-E image...')
-        const imgRes = await fetch(dalleUrl, { signal: AbortSignal.timeout(45000) })
-        if (!imgRes.ok) throw new Error(`Image download failed: ${imgRes.status}`)
-        const arrayBuf = await imgRes.arrayBuffer()
-        bgBuffer = Buffer.from(arrayBuf)
-        console.log('[Image] DALL-E image downloaded:', bgBuffer.length, 'bytes')
+      if (photoRes.ok) {
+        const buf = await photoRes.arrayBuffer()
+        bgBuffer = Buffer.from(buf)
+        photoSource = `unsplash:${keywords}`
+        console.log('[Image] Photo downloaded:', bgBuffer.length, 'bytes')
       }
-    } catch (dalleErr) {
-      console.error('[Image] DALL-E generation failed:', dalleErr)
+    } catch (err) {
+      console.warn('[Image] Unsplash fetch failed:', err)
     }
 
-    // ── STEP 2: テキストオーバーレイSVGを生成 ──
+    // ── STEP 2: テキストオーバーレイSVG ──
     const overlaySvg = generateOverlaySvg(title, accent)
 
-    // ── STEP 3: sharp で合成 → PNG 1080x1080 ──
+    // ── STEP 3: sharp で合成 ──
     let pngBuffer: Buffer
-    let svgFallback = ''
+    let svgFallbackUrl = ''
 
     if (bgBuffer) {
-      // DALL-E背景 + テキストオーバーレイを合成
+      // 写真 + オーバーレイ合成
       pngBuffer = await sharp(bgBuffer)
         .resize(1080, 1080, { fit: 'cover', position: 'center' })
-        .composite([
-          { input: Buffer.from(overlaySvg), blend: 'over' }
-        ])
+        .composite([{ input: Buffer.from(overlaySvg), blend: 'over' }])
         .png()
         .toBuffer()
     } else {
-      // フォールバック: SVGのみ（グラデーション背景）
+      // フォールバック: SVGグラデーション背景
+      console.warn('[Image] Using SVG fallback')
       const { generateSvgTemplate } = await import('@/lib/image/templates')
-      svgFallback = generateSvgTemplate({ ...image_data, template_type })
+      const svgFallback = generateSvgTemplate({ ...image_data, template_type })
       pngBuffer = await sharp(Buffer.from(svgFallback))
         .resize(1080, 1080)
         .png()
         .toBuffer()
+      // SVGも保存
+      const svgFileName = `${candidate_id}/${template_type}_${timestamp}.svg`
+      await adminClient.storage.from('generated-images')
+        .upload(svgFileName, Buffer.from(svgFallback), { contentType: 'image/svg+xml', upsert: true })
+      const { data: svgD } = adminClient.storage.from('generated-images').getPublicUrl(svgFileName)
+      svgFallbackUrl = svgD.publicUrl
     }
 
-    // ── STEP 4: PNGをSupabase Storageにアップロード ──
+    // ── STEP 4: PNG アップロード ──
     const pngFileName = `${candidate_id}/${template_type}_${timestamp}.png`
     const { error: pngErr } = await adminClient.storage
       .from('generated-images')
       .upload(pngFileName, pngBuffer, { contentType: 'image/png', upsert: true })
     if (pngErr) throw pngErr
 
-    const { data: pngUrlData } = adminClient.storage
-      .from('generated-images')
-      .getPublicUrl(pngFileName)
-    const pngUrl = pngUrlData.publicUrl
+    const { data: pngD } = adminClient.storage.from('generated-images').getPublicUrl(pngFileName)
+    const pngUrl = pngD.publicUrl
 
-    // フォールバックSVGもアップロード（プレビュー用）
-    let svgUrl = pngUrl
-    if (svgFallback) {
-      const svgFileName = `${candidate_id}/${template_type}_${timestamp}.svg`
-      await adminClient.storage
-        .from('generated-images')
-        .upload(svgFileName, Buffer.from(svgFallback), { contentType: 'image/svg+xml', upsert: true })
-      const { data: svgUrlData } = adminClient.storage
-        .from('generated-images')
-        .getPublicUrl(svgFileName)
-      svgUrl = svgUrlData.publicUrl
-    }
-
-    // ── STEP 5: DBに保存 ──
+    // ── STEP 5: DB 保存 ──
     const { data: imageRecord } = await supabase
       .from('generated_images')
       .insert({
         post_candidate_id: candidate_id,
         template_type,
         image_size: '1080x1080',
-        image_url: svgUrl,
+        image_url: svgFallbackUrl || pngUrl,
         png_url: pngUrl,
-        image_text_json: { ...image_data, dalle_prompt: dallePrompt },
+        image_text_json: { ...image_data, photo_source: photoSource },
       })
-      .select()
-      .single()
+      .select().single()
 
-    await supabase
-      .from('post_candidates')
-      .update({ status: 'image_created' })
-      .eq('id', candidate_id)
+    await supabase.from('post_candidates')
+      .update({ status: 'image_created' }).eq('id', candidate_id)
 
-    // プレビュー用SVG（テキストオーバーレイのみ返す）
     return NextResponse.json({
-      image_url: svgUrl,
+      image_url: svgFallbackUrl || pngUrl,
       png_url: pngUrl,
       image_id: imageRecord?.id,
       svg: overlaySvg,
-      dalle_used: !!bgBuffer,
-      dalle_prompt: dallePrompt,
+      photo_used: !!bgBuffer,
+      photo_source: photoSource,
     })
 
   } catch (error) {
