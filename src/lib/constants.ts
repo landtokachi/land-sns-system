@@ -7,9 +7,9 @@ export const PRIORITY_LABELS: Record<Priority, string> = {
 }
 
 export const PRIORITY_COLORS: Record<Priority, string> = {
-  high: 'bg-rose-50 text-rose-500 border border-rose-100 font-semibold',
-  medium: 'bg-amber-50 text-amber-500 border border-amber-100 font-semibold',
-  low: 'bg-violet-50 text-violet-400 border border-violet-100',
+  high:   'text-red-600 bg-red-50 font-medium',
+  medium: 'text-amber-600 bg-amber-50 font-medium',
+  low:    'text-zinc-500 bg-zinc-100',
 }
 
 export const IMPORTANCE_LABELS: Record<Importance, string> = {
@@ -32,16 +32,16 @@ export const CANDIDATE_STATUS_LABELS: Record<CandidateStatus, string> = {
 }
 
 export const CANDIDATE_STATUS_COLORS: Record<CandidateStatus, string> = {
-  unconfirmed: 'bg-slate-100 text-slate-500',
-  candidate: 'bg-blue-50 text-blue-600',
-  drafting: 'bg-purple-50 text-purple-600',
-  draft_created: 'bg-indigo-50 text-indigo-600',
-  image_created: 'bg-sky-50 text-sky-600',
-  review_waiting: 'bg-orange-50 text-orange-600',
-  ready: 'bg-green-50 text-green-600',
-  scheduled: 'bg-teal-50 text-teal-600',
-  published: 'bg-emerald-50 text-emerald-600',
-  skipped: 'bg-slate-100 text-slate-400',
+  unconfirmed:    'text-zinc-500 bg-zinc-100',
+  candidate:      'text-indigo-600 bg-indigo-50',
+  drafting:       'text-violet-600 bg-violet-50',
+  draft_created:  'text-purple-600 bg-purple-50',
+  image_created:  'text-sky-600 bg-sky-50',
+  review_waiting: 'text-amber-600 bg-amber-50',
+  ready:          'text-green-600 bg-green-50',
+  scheduled:      'text-blue-600 bg-blue-50',
+  published:      'text-emerald-600 bg-emerald-50',
+  skipped:        'text-zinc-400 bg-zinc-100',
 }
 
 export const REVIEW_STATUS_LABELS: Record<ReviewStatus, string> = {

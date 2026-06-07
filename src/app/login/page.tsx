@@ -27,74 +27,62 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="app-bg min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Subtle bg orbs */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute -top-32 left-1/4 w-[500px] h-[500px] rounded-full opacity-40"
-          style={{background:'radial-gradient(circle, rgba(139,92,246,0.18), transparent)'}} />
-        <div className="absolute -bottom-32 right-1/4 w-[400px] h-[400px] rounded-full opacity-30"
-          style={{background:'radial-gradient(circle, rgba(99,102,241,0.15), transparent)'}} />
-      </div>
+    <div className="min-h-screen bg-zinc-50 flex items-center justify-center p-4">
+      <div className="w-full max-w-sm">
 
-      <div className="w-full max-w-sm relative z-10">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div
-            className="w-16 h-16 rounded-2xl flex items-center justify-center text-white text-2xl font-black mx-auto mb-4"
-            style={{
-              background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-              boxShadow: '0 8px 28px rgba(99,102,241,0.35)',
-            }}>
+          <div className="w-12 h-12 bg-zinc-900 rounded-xl flex items-center justify-center text-white font-black text-xl mx-auto mb-4">
             L
           </div>
-          <h1 className="text-2xl font-black gradient-text">LAND</h1>
-          <p className="text-sm mt-1.5" style={{color:'#a5b4fc'}}>情報発信統合システム</p>
+          <h1 className="text-xl font-bold text-zinc-900">LAND</h1>
+          <p className="text-sm text-zinc-500 mt-1">情報発信統合システム</p>
         </div>
 
         {/* Card */}
-        <div className="glass-card p-8">
-          <h2 className="text-base font-bold mb-1" style={{color:'#1e1b4b'}}>スタッフログイン</h2>
-          <p className="text-xs mb-6" style={{color:'#c4b5fd'}}>IDとPINコードでログイン</p>
+        <div className="bg-white rounded-xl p-6 shadow-sm" style={{ border: '1px solid #e4e4e7' }}>
+          <h2 className="text-sm font-semibold text-zinc-700 mb-5">スタッフログイン</h2>
 
           {error && (
-            <div className="mb-4 p-3 rounded-xl text-xs text-center"
-              style={{background:'rgba(244,63,94,0.08)', border:'1px solid rgba(244,63,94,0.18)', color:'#f43f5e'}}>
+            <div className="mb-4 px-3 py-2.5 rounded-lg text-xs text-red-600 bg-red-50"
+              style={{ border: '1px solid #fecaca' }}>
               {error}
             </div>
           )}
 
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
-              <label className="block text-xs font-semibold mb-1.5" style={{color:'#6b7a99'}}>スタッフID</label>
+              <label className="block text-xs font-medium text-zinc-600 mb-1.5">スタッフID</label>
               <input required value={staffId} onChange={e => setStaffId(e.target.value)}
-                className="w-full px-4 py-3 text-sm text-center tracking-widest"
+                className="w-full px-3 py-2.5 text-sm text-center tracking-widest"
                 placeholder="例：yamada" autoCapitalize="none"/>
             </div>
+
             <div>
-              <label className="block text-xs font-semibold mb-1.5 text-center" style={{color:'#6b7a99'}}>PINコード（4桁）</label>
+              <label className="block text-xs font-medium text-zinc-600 mb-1.5 text-center">PINコード（4桁）</label>
               <input type="password" inputMode="numeric" pattern="\d{4}" maxLength={4}
                 required value={pin} onChange={e => handlePinInput(e.target.value)}
-                className="w-full px-4 py-3 text-center text-3xl tracking-[1rem]" placeholder="••••"/>
-              <div className="flex justify-center gap-4 mt-3">
+                className="w-full px-3 py-2.5 text-center text-2xl tracking-[1rem]"
+                placeholder="••••"/>
+              <div className="flex justify-center gap-3 mt-2.5">
                 {[0,1,2,3].map(i => (
-                  <div key={i} className="rounded-full transition-all duration-200"
+                  <div key={i} className="rounded-full transition-all duration-150"
                     style={{
-                      width: i < pin.length ? '13px' : '9px',
-                      height: i < pin.length ? '13px' : '9px',
-                      background: i < pin.length ? 'linear-gradient(135deg, #6366f1, #8b5cf6)' : 'rgba(99,102,241,0.15)',
-                      boxShadow: i < pin.length ? '0 0 10px rgba(99,102,241,0.5)' : 'none',
+                      width: '10px', height: '10px',
+                      background: i < pin.length ? '#18181b' : '#e4e4e7',
                     }}/>
                 ))}
               </div>
             </div>
+
             <button type="submit" disabled={loading || pin.length !== 4 || !staffId}
-              className="btn-glow w-full py-3 rounded-2xl text-sm font-bold mt-2">
-              {loading ? 'ログイン中...' : 'ログイン →'}
+              className="btn-glow w-full py-2.5 rounded-lg text-sm font-medium">
+              {loading ? 'ログイン中...' : 'ログイン'}
             </button>
           </form>
         </div>
 
-        <p className="text-center text-xs mt-5" style={{color:'#d8d4f0'}}>公益財団法人とかち財団</p>
+        <p className="text-center text-xs text-zinc-400 mt-6">公益財団法人とかち財団</p>
       </div>
     </div>
   )

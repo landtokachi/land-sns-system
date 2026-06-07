@@ -3,7 +3,7 @@ import { AppLayout } from '@/components/layout/AppLayout'
 import Link from 'next/link'
 import { format, addDays, startOfWeek, endOfWeek } from 'date-fns'
 import { ja } from 'date-fns/locale'
-import { CANDIDATE_STATUS_LABELS, PRIORITY_COLORS, PRIORITY_LABELS } from '@/lib/constants'
+import { CANDIDATE_STATUS_LABELS } from '@/lib/constants'
 import type { PostCandidate } from '@/types'
 
 export default async function DashboardPage() {
@@ -24,253 +24,230 @@ export default async function DashboardPage() {
     supabase.from('post_candidates').select('*', { count: 'exact', head: true }).in('status', ['draft_created','image_created','review_waiting','ready']),
     supabase.from('post_candidates').select('*', { count: 'exact', head: true }).eq('status', 'scheduled'),
     supabase.from('post_candidates').select('*', { count: 'exact', head: true }).eq('status', 'published'),
-    supabase.from('post_candidates').select('id,title,category,priority,status,created_at').order('created_at',{ascending:false}).limit(5),
+    supabase.from('post_candidates').select('id,title,category,priority,status,created_at').order('created_at',{ascending:false}).limit(6),
     supabase.from('post_candidates').select('id,title,deadline,priority,status').not('deadline','is',null).lte('deadline',soon.toISOString().slice(0,10)).gte('deadline',now.toISOString().slice(0,10)).order('deadline').limit(5),
-    supabase.from('social_posts').select('id,platform,status,scheduled_at,post_candidates(title)').gte('scheduled_at',weekStart.toISOString()).lte('scheduled_at',weekEnd.toISOString()).order('scheduled_at').limit(10),
+    supabase.from('social_posts').select('id,platform,status,scheduled_at,post_candidates(title)').gte('scheduled_at',weekStart.toISOString()).lte('scheduled_at',weekEnd.toISOString()).order('scheduled_at').limit(8),
     supabase.from('post_candidates').select('status'),
     supabase.from('post_candidates').select('id,title,review_status,updated_at').eq('review_status','requesting').order('updated_at',{ascending:false}).limit(5),
   ])
 
   const stats = [
-    { label: '投稿候補数', value: total ?? 0,
-      bg: 'linear-gradient(135deg, #6366f1, #818cf8)',
-      soft: 'rgba(99,102,241,0.10)', softBorder: 'rgba(99,102,241,0.20)',
-      iconColor: '#fff',
-      icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg> },
-    { label: '優先度「高」', value: highPriority ?? 0,
-      bg: 'linear-gradient(135deg, #f43f5e, #fb7185)',
-      soft: 'rgba(244,63,94,0.10)', softBorder: 'rgba(244,63,94,0.20)',
-      iconColor: '#fff',
-      icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg> },
-    { label: '下書き作成済み', value: draftCreated ?? 0,
-      bg: 'linear-gradient(135deg, #8b5cf6, #a78bfa)',
-      soft: 'rgba(139,92,246,0.10)', softBorder: 'rgba(139,92,246,0.20)',
-      iconColor: '#fff',
-      icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg> },
-    { label: '投稿予定', value: scheduled ?? 0,
-      bg: 'linear-gradient(135deg, #0ea5e9, #38bdf8)',
-      soft: 'rgba(14,165,233,0.10)', softBorder: 'rgba(14,165,233,0.20)',
-      iconColor: '#fff',
-      icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg> },
-    { label: '投稿済み', value: published ?? 0,
-      bg: 'linear-gradient(135deg, #10b981, #34d399)',
-      soft: 'rgba(16,185,129,0.10)', softBorder: 'rgba(16,185,129,0.20)',
-      iconColor: '#fff',
-      icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> },
+    { label: '投稿候補数', value: total ?? 0, sub: '全件', color: '#6366f1', bg: '#eef2ff' },
+    { label: '優先度「高」', value: highPriority ?? 0, sub: '要対応', color: '#ef4444', bg: '#fef2f2' },
+    { label: '下書き済み', value: draftCreated ?? 0, sub: '確認含む', color: '#8b5cf6', bg: '#f5f3ff' },
+    { label: '投稿予定', value: scheduled ?? 0, sub: 'スケジュール', color: '#0ea5e9', bg: '#f0f9ff' },
+    { label: '投稿済み', value: published ?? 0, sub: '完了', color: '#10b981', bg: '#f0fdf4' },
   ]
 
-  const statusMap: Record<string,{label:string;color:string;bg:string}> = {
-    unconfirmed:{label:'未確認',color:'#94a3b8',bg:'rgba(148,163,184,0.12)'},
-    candidate:{label:'投稿候補',color:'#6366f1',bg:'rgba(99,102,241,0.12)'},
-    drafting:{label:'下書き中',color:'#8b5cf6',bg:'rgba(139,92,246,0.12)'},
-    draft_created:{label:'下書き済み',color:'#7c3aed',bg:'rgba(124,58,237,0.12)'},
-    image_created:{label:'画像生成済み',color:'#0ea5e9',bg:'rgba(14,165,233,0.12)'},
-    review_waiting:{label:'確認待ち',color:'#f97316',bg:'rgba(249,115,22,0.12)'},
-    ready:{label:'準備完了',color:'#10b981',bg:'rgba(16,185,129,0.12)'},
-    scheduled:{label:'投稿予定',color:'#0f766e',bg:'rgba(15,118,110,0.12)'},
-    published:{label:'投稿済み',color:'#059669',bg:'rgba(5,150,105,0.12)'},
-    skipped:{label:'見送り',color:'#cbd5e1',bg:'rgba(203,213,225,0.12)'},
+  const STATUS_STYLE: Record<string, { label: string; color: string; dot: string }> = {
+    unconfirmed:    { label: '未確認',     color: '#71717a', dot: '#a1a1aa' },
+    candidate:      { label: '投稿候補',   color: '#6366f1', dot: '#818cf8' },
+    drafting:       { label: '下書き中',   color: '#8b5cf6', dot: '#a78bfa' },
+    draft_created:  { label: '下書き済み', color: '#7c3aed', dot: '#a78bfa' },
+    image_created:  { label: '画像生成済み', color: '#0891b2', dot: '#22d3ee' },
+    review_waiting: { label: '確認待ち',   color: '#d97706', dot: '#fbbf24' },
+    ready:          { label: '準備完了',   color: '#16a34a', dot: '#4ade80' },
+    scheduled:      { label: '投稿予定',   color: '#0284c7', dot: '#38bdf8' },
+    published:      { label: '投稿済み',   color: '#059669', dot: '#34d399' },
+    skipped:        { label: '見送り',     color: '#a1a1aa', dot: '#d4d4d8' },
   }
-  const statusCounts = (allCandidates||[]).reduce<Record<string,number>>((acc,c)=>{ acc[c.status]=(acc[c.status]||0)+1; return acc },{})
-  const statusBreakdown = Object.entries(statusCounts)
-    .map(([s,count])=>({status:s,count,...(statusMap[s]||{label:s,color:'#94a3b8',bg:'rgba(148,163,184,0.12)'})}))
-    .sort((a,b)=>b.count-a.count)
 
-  const platStyle: Record<string,{bg:string;color:string}> = {
-    instagram:{bg:'rgba(219,39,119,0.10)',color:'#ec4899'},
-    facebook:{bg:'rgba(99,102,241,0.10)',color:'#6366f1'},
-    x:{bg:'rgba(148,163,184,0.12)',color:'#64748b'},
+  const statusCounts = (allCandidates||[]).reduce<Record<string,number>>((acc,c) => {
+    acc[c.status] = (acc[c.status]||0)+1; return acc
+  }, {})
+  const statusBreakdown = Object.entries(statusCounts)
+    .map(([s,count]) => ({ status:s, count, ...(STATUS_STYLE[s] || { label:s, color:'#71717a', dot:'#a1a1aa' }) }))
+    .sort((a,b) => b.count-a.count)
+
+  const PRIORITY_BADGE: Record<string, { label: string; color: string; bg: string }> = {
+    high:   { label: '高', color: '#dc2626', bg: '#fef2f2' },
+    medium: { label: '中', color: '#d97706', bg: '#fffbeb' },
+    low:    { label: '低', color: '#71717a', bg: '#f4f4f5' },
+  }
+  const PLATFORM_BADGE: Record<string, { label: string; color: string; bg: string }> = {
+    instagram: { label: 'Instagram', color: '#be185d', bg: '#fdf2f8' },
+    facebook:  { label: 'Facebook',  color: '#1d4ed8', bg: '#eff6ff' },
+    x:         { label: 'X',         color: '#374151', bg: '#f9fafb' },
   }
 
   return (
     <AppLayout title="ダッシュボード">
-      <div className="space-y-5 max-w-7xl mx-auto">
+      <div className="space-y-6 max-w-7xl mx-auto">
 
         {/* Page header */}
-        <div className="flex items-end justify-between flex-wrap gap-3">
+        <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-black gradient-text">Dashboard</h1>
-            <p className="text-sm mt-0.5" style={{color:'#c4b5fd'}}>
-              {format(now, 'yyyy年M月d日（E）', {locale:ja})}
+            <h2 className="text-lg font-semibold text-zinc-900">概要</h2>
+            <p className="text-sm text-zinc-500 mt-0.5">
+              {format(now, 'yyyy年M月d日（E）', {locale:ja})} 時点
             </p>
           </div>
-          <div className="flex gap-2">
-            <Link href="/collect"
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all hover:bg-indigo-50"
-              style={{background:'rgba(99,102,241,0.08)', color:'#6366f1', border:'1px solid rgba(99,102,241,0.18)'}}>
-              ✨ AI収集
-            </Link>
-            <Link href="/candidates/new"
-              className="btn-glow flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white">
-              + 新規登録
-            </Link>
-          </div>
+          <Link href="/candidates/new"
+            className="btn-glow inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium">
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/>
+            </svg>
+            新規登録
+          </Link>
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           {stats.map(s => (
-            <div key={s.label} className="glass-card p-4 sm:p-5 relative overflow-hidden">
-              <div className="absolute -top-6 -right-6 w-20 h-20 rounded-full opacity-60"
-                style={{background:s.soft}} />
-              <div
-                className="w-10 h-10 rounded-2xl flex items-center justify-center mb-4 relative"
-                style={{background:s.bg, boxShadow:`0 4px 14px ${s.softBorder.replace('0.20','0.4')}`}}>
-                <span className="text-white">{s.icon}</span>
+            <div key={s.label} className="glass-card p-4">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs font-medium text-zinc-500">{s.label}</span>
+                <span className="text-xs px-1.5 py-0.5 rounded font-medium"
+                  style={{ background: s.bg, color: s.color }}>{s.sub}</span>
               </div>
-              <p className="text-3xl font-black" style={{color:'#1e1b4b'}}>{s.value}</p>
-              <p className="text-xs mt-1 font-medium" style={{color:'#9ca3af'}}>{s.label}</p>
+              <p className="text-2xl font-bold text-zinc-900">{s.value}</p>
             </div>
           ))}
         </div>
 
-        {/* 確認待ち */}
+        {/* Alert */}
         {reviewWaiting && reviewWaiting.length > 0 && (
-          <div className="glass-card p-4 sm:p-5"
-            style={{background:'rgba(255,237,213,0.7)', borderColor:'rgba(249,115,22,0.2)'}}>
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="font-bold text-sm" style={{color:'#c2410c'}}>
-                ⏳ 掲載確認待ち（{reviewWaiting.length}件）
-              </h3>
+          <div className="glass-card p-4 border-amber-200"
+            style={{ background: '#fffbeb', borderColor: '#fde68a' }}>
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-5 h-5 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+                <svg className="w-3 h-3 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01"/>
+                </svg>
+              </div>
+              <span className="text-sm font-medium text-amber-800">
+                掲載確認待ち {reviewWaiting.length}件
+              </span>
               <Link href="/candidates?status=review_waiting"
-                className="text-xs font-semibold hover:underline" style={{color:'#ea580c'}}>
-                すべて見る →
-              </Link>
+                className="ml-auto text-xs text-amber-600 hover:underline">すべて見る</Link>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               {reviewWaiting.map(c => (
                 <Link key={c.id} href={`/candidates/${c.id}`}
-                  className="flex items-center justify-between p-3 rounded-xl transition-all hover:bg-white/60"
-                  style={{background:'rgba(255,255,255,0.55)', border:'1px solid rgba(249,115,22,0.15)'}}>
-                  <span className="text-sm font-medium truncate flex-1 mr-3" style={{color:'#1e1b4b'}}>{c.title}</span>
-                  <span className="text-xs font-bold flex-shrink-0" style={{color:'#ea580c'}}>確認依頼中 →</span>
+                  className="flex items-center justify-between p-2.5 rounded-lg bg-white hover:bg-amber-50 transition-colors"
+                  style={{ border: '1px solid #fde68a' }}>
+                  <span className="text-sm text-zinc-700 truncate flex-1 mr-3">{c.title}</span>
+                  <span className="text-xs text-amber-600 flex-shrink-0">確認依頼中 →</span>
                 </Link>
               ))}
             </div>
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        {/* 2 columns */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+
           {/* ステータス内訳 */}
           <div className="glass-card p-5">
-            <div className="flex items-center justify-between mb-5">
-              <h3 className="font-bold text-sm" style={{color:'#1e1b4b'}}>ステータス内訳</h3>
-              <Link href="/candidates"
-                className="text-xs font-semibold px-3 py-1.5 rounded-xl transition-all hover:bg-indigo-50"
-                style={{color:'#6366f1', border:'1px solid rgba(99,102,241,0.18)'}}>
-                一覧へ →
-              </Link>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold text-zinc-900">ステータス内訳</h3>
+              <Link href="/candidates" className="text-xs text-indigo-600 hover:underline">一覧</Link>
             </div>
-            {statusBreakdown.length > 0 ? (
-              <div className="space-y-3">
-                {statusBreakdown.map(s => (
-                  <div key={s.status} className="flex items-center gap-3">
-                    <span className="text-xs px-2.5 py-1 rounded-full w-24 text-right flex-shrink-0 font-medium truncate"
-                      style={{background:s.bg, color:s.color}}>{s.label}</span>
-                    <div className="flex-1 rounded-full h-2.5 overflow-hidden"
-                      style={{background:'rgba(99,102,241,0.08)'}}>
-                      <div className="h-full rounded-full transition-all"
-                        style={{width:`${Math.max((s.count/(total||1))*100,4)}%`, background:s.color, opacity:0.7}} />
-                    </div>
-                    <span className="text-xs font-bold w-4 text-right flex-shrink-0" style={{color:s.color}}>{s.count}</span>
+            <div className="space-y-3">
+              {statusBreakdown.map(s => (
+                <div key={s.status} className="flex items-center gap-2.5">
+                  <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: s.dot }} />
+                  <span className="text-xs text-zinc-500 w-20 truncate">{s.label}</span>
+                  <div className="flex-1 h-1.5 rounded-full bg-zinc-100 overflow-hidden">
+                    <div className="h-full rounded-full transition-all"
+                      style={{ width: `${Math.max((s.count/(total||1))*100, 4)}%`, background: s.color, opacity: 0.6 }} />
                   </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-center py-6" style={{color:'#e0d7ff'}}>データがありません</p>
-            )}
+                  <span className="text-xs font-medium w-4 text-right flex-shrink-0"
+                    style={{ color: s.color }}>{s.count}</span>
+                </div>
+              ))}
+              {!statusBreakdown.length && <p className="text-xs text-zinc-400 text-center py-4">データなし</p>}
+            </div>
           </div>
+
+          {/* 最近の投稿候補 */}
+          <div className="glass-card p-5 lg:col-span-2">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold text-zinc-900">最近追加された投稿候補</h3>
+              <Link href="/candidates" className="text-xs text-indigo-600 hover:underline">一覧</Link>
+            </div>
+            <div className="space-y-1">
+              {(recent as PostCandidate[]|null)?.map(c => {
+                const pb = PRIORITY_BADGE[c.priority]
+                const sc = STATUS_STYLE[c.status]
+                return (
+                  <Link key={c.id} href={`/candidates/${c.id}`}
+                    className="flex items-center gap-3 px-2 py-2.5 rounded-lg hover:bg-zinc-50 transition-colors group">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-zinc-800 truncate group-hover:text-zinc-900">{c.title}</p>
+                      {c.category && <p className="text-xs text-zinc-400 mt-0.5">{c.category}</p>}
+                    </div>
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <span className="text-xs px-1.5 py-0.5 rounded font-medium"
+                        style={{ background: pb.bg, color: pb.color }}>{pb.label}</span>
+                      <span className="text-xs px-1.5 py-0.5 rounded font-medium text-zinc-500 bg-zinc-100">
+                        {sc?.label || c.status}
+                      </span>
+                    </div>
+                  </Link>
+                )
+              })}
+              {!recent?.length && <p className="text-xs text-zinc-400 text-center py-4">投稿候補がありません</p>}
+            </div>
+          </div>
+        </div>
+
+        {/* 下段 2 columns */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
           {/* 今週の投稿予定 */}
           <div className="glass-card p-5">
-            <div className="flex items-center justify-between mb-5">
-              <h3 className="font-bold text-sm" style={{color:'#1e1b4b'}}>今週の投稿予定</h3>
-              <Link href="/schedule"
-                className="text-xs font-semibold px-3 py-1.5 rounded-xl transition-all hover:bg-indigo-50"
-                style={{color:'#6366f1', border:'1px solid rgba(99,102,241,0.18)'}}>
-                カレンダーへ →
-              </Link>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold text-zinc-900">今週の投稿予定</h3>
+              <Link href="/schedule" className="text-xs text-indigo-600 hover:underline">カレンダー</Link>
             </div>
             {weekPosts && weekPosts.length > 0 ? (
-              <div className="space-y-2">
+              <div className="space-y-1">
                 {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                 {(weekPosts as any[]).map(post => {
-                  const ps = platStyle[post.platform] || platStyle.x
+                  const pb = PLATFORM_BADGE[post.platform] || PLATFORM_BADGE.x
                   return (
-                    <div key={post.id}
-                      className="flex items-center gap-3 p-3 rounded-xl transition-all hover:bg-indigo-50/40"
-                      style={{background:'rgba(99,102,241,0.04)', border:'1px solid rgba(99,102,241,0.08)'}}>
-                      <span className="text-xs font-semibold w-14 flex-shrink-0" style={{color:'#c4b5fd'}}>
+                    <div key={post.id} className="flex items-center gap-3 px-2 py-2.5 rounded-lg hover:bg-zinc-50">
+                      <span className="text-xs text-zinc-400 w-16 flex-shrink-0">
                         {format(new Date(post.scheduled_at!), 'M/d(E)', {locale:ja})}
                       </span>
-                      <span className="text-sm flex-1 truncate font-medium" style={{color:'#1e1b4b'}}>
-                        {post.post_candidates?.title}
-                      </span>
-                      <span className="text-xs px-2.5 py-1 rounded-full flex-shrink-0 font-semibold"
-                        style={{background:ps.bg, color:ps.color}}>{post.platform}</span>
+                      <span className="text-sm text-zinc-700 flex-1 truncate">{post.post_candidates?.title}</span>
+                      <span className="text-xs px-1.5 py-0.5 rounded font-medium flex-shrink-0"
+                        style={{ background: pb.bg, color: pb.color }}>{pb.label}</span>
                     </div>
                   )
                 })}
               </div>
             ) : (
-              <p className="text-sm text-center py-6" style={{color:'#e0d7ff'}}>今週の投稿予定はありません</p>
+              <p className="text-xs text-zinc-400 text-center py-6">今週の予定はありません</p>
             )}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          {/* 最近の投稿候補 */}
-          <div className="glass-card p-5">
-            <div className="flex items-center justify-between mb-5">
-              <h3 className="font-bold text-sm" style={{color:'#1e1b4b'}}>最近追加された投稿候補</h3>
-              <Link href="/candidates"
-                className="text-xs font-semibold px-3 py-1.5 rounded-xl transition-all hover:bg-indigo-50"
-                style={{color:'#6366f1', border:'1px solid rgba(99,102,241,0.18)'}}>
-                一覧へ →
-              </Link>
-            </div>
-            <div className="space-y-2">
-              {(recent as PostCandidate[]|null)?.map(c => (
-                <Link key={c.id} href={`/candidates/${c.id}`}
-                  className="flex items-center justify-between p-3 rounded-xl transition-all hover:bg-indigo-50/40"
-                  style={{background:'rgba(99,102,241,0.04)', border:'1px solid rgba(99,102,241,0.07)'}}>
-                  <div className="flex-1 min-w-0 mr-3">
-                    <p className="text-sm font-semibold truncate" style={{color:'#1e1b4b'}}>{c.title}</p>
-                    {c.category && <p className="text-xs mt-0.5 truncate" style={{color:'#c4b5fd'}}>{c.category}</p>}
-                  </div>
-                  <span className={`text-xs px-2.5 py-1 rounded-full flex-shrink-0 font-medium ${PRIORITY_COLORS[c.priority]}`}>
-                    {PRIORITY_LABELS[c.priority]}
-                  </span>
-                </Link>
-              ))}
-              {!recent?.length && <p className="text-sm text-center py-6" style={{color:'#e0d7ff'}}>投稿候補がありません</p>}
-            </div>
           </div>
 
           {/* 締切が近い */}
           <div className="glass-card p-5">
-            <div className="flex items-center justify-between mb-5">
-              <h3 className="font-bold text-sm" style={{color:'#1e1b4b'}}>⚡ 締切が近い投稿候補</h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold text-zinc-900">締切が近い投稿候補</h3>
             </div>
-            <div className="space-y-2">
-              {(nearDeadline as PostCandidate[]|null)?.map(c => (
-                <Link key={c.id} href={`/candidates/${c.id}`}
-                  className="flex items-center justify-between p-3 rounded-xl transition-all hover:bg-indigo-50/40"
-                  style={{background:'rgba(99,102,241,0.04)', border:'1px solid rgba(99,102,241,0.07)'}}>
-                  <div className="flex-1 min-w-0 mr-3">
-                    <p className="text-sm font-semibold truncate" style={{color:'#1e1b4b'}}>{c.title}</p>
-                    <span className="text-xs px-2 py-0.5 rounded-full mt-1 inline-block"
-                      style={{background:'rgba(99,102,241,0.10)', color:'#6366f1'}}>
-                      {CANDIDATE_STATUS_LABELS[c.status]}
+            {(nearDeadline as PostCandidate[]|null)?.length ? (
+              <div className="space-y-1">
+                {(nearDeadline as PostCandidate[]).map(c => (
+                  <Link key={c.id} href={`/candidates/${c.id}`}
+                    className="flex items-center gap-3 px-2 py-2.5 rounded-lg hover:bg-zinc-50 transition-colors">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-zinc-800 truncate">{c.title}</p>
+                      <span className="text-xs text-zinc-400">
+                        {CANDIDATE_STATUS_LABELS[c.status]}
+                      </span>
+                    </div>
+                    <span className="text-sm font-semibold flex-shrink-0 text-red-500">
+                      {format(new Date(c.deadline!), 'M/d', {locale:ja})}
                     </span>
-                  </div>
-                  <span className="text-xl font-black flex-shrink-0" style={{color:'#f43f5e'}}>
-                    {format(new Date(c.deadline!), 'M/d', {locale:ja})}
-                  </span>
-                </Link>
-              ))}
-              {!nearDeadline?.length && <p className="text-sm text-center py-6" style={{color:'#e0d7ff'}}>締切が近い候補はありません</p>}
-            </div>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-zinc-400 text-center py-6">締切が近い候補はありません</p>
+            )}
           </div>
         </div>
       </div>
