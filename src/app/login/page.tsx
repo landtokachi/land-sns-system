@@ -29,104 +29,77 @@ export default function LoginPage() {
 
   return (
     <div className="app-bg min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Soft background blobs */}
+      {/* Ambient glows */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute -top-32 -left-32 w-96 h-96 rounded-full opacity-40"
-          style={{ background: 'radial-gradient(circle, rgba(91,127,255,0.3), transparent)' }} />
-        <div className="absolute -bottom-32 -right-32 w-96 h-96 rounded-full opacity-30"
-          style={{ background: 'radial-gradient(circle, rgba(124,92,252,0.25), transparent)' }} />
-        <div className="absolute top-1/3 right-1/4 w-64 h-64 rounded-full opacity-20"
-          style={{ background: 'radial-gradient(circle, rgba(56,189,248,0.3), transparent)' }} />
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full opacity-15"
+          style={{background:'radial-gradient(circle, rgba(59,130,246,0.6), transparent)'}} />
+        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 rounded-full opacity-10"
+          style={{background:'radial-gradient(circle, rgba(139,92,246,0.6), transparent)'}} />
+        <div className="absolute top-1/2 right-1/3 w-60 h-60 rounded-full opacity-08"
+          style={{background:'radial-gradient(circle, rgba(180,60,120,0.4), transparent)'}} />
       </div>
 
       <div className="w-full max-w-sm relative z-10">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div
-            className="w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-5 shadow-lg"
+          <div className="w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-5"
             style={{
-              background: 'linear-gradient(135deg, #5b7fff 0%, #7c5cfc 100%)',
-              boxShadow: '0 8px 32px rgba(91,127,255,0.3)',
-            }}
-          >
-            <span className="text-white text-3xl font-bold">L</span>
+              background:'linear-gradient(135deg, #1e40af, #7c3aed)',
+              boxShadow:'0 0 40px rgba(59,130,246,0.35), 0 8px 32px rgba(0,0,0,0.4)',
+            }}>
+            <span className="text-white text-3xl font-black tracking-tight">L</span>
           </div>
-          <h1 className="text-3xl font-bold" style={{ color: '#1e2b3c' }}>LAND</h1>
-          <p className="mt-1.5 text-sm" style={{ color: '#8a9abf' }}>情報発信統合システム</p>
+          <h1 className="text-3xl font-black text-white tracking-tight">LAND</h1>
+          <p className="mt-1.5 text-sm" style={{color:'#4a5568'}}>情報発信統合システム</p>
         </div>
 
         {/* Card */}
-        <div className="glass-card p-8" style={{ boxShadow: '0 8px 40px rgba(100,120,200,0.14)' }}>
-          <h2 className="text-lg font-semibold text-center mb-6" style={{ color: '#1e2b3c' }}>ログイン</h2>
+        <div className="glass-card p-8">
+          <h2 className="text-base font-semibold text-center mb-6" style={{color:'#94a3b8'}}>スタッフログイン</h2>
 
           {error && (
             <div className="mb-4 p-3 rounded-xl text-sm text-center"
-              style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#dc2626' }}>
+              style={{background:'rgba(239,68,68,0.1)', border:'1px solid rgba(239,68,68,0.2)', color:'#f87171'}}>
               {error}
             </div>
           )}
 
           <form onSubmit={handleLogin} className="space-y-5">
             <div>
-              <label className="block text-xs font-semibold mb-1.5" style={{ color: '#6b7a99' }}>スタッフID</label>
-              <input
-                required
-                value={staffId}
-                onChange={(e) => setStaffId(e.target.value)}
+              <label className="block text-xs font-medium mb-1.5" style={{color:'#64748b'}}>スタッフID</label>
+              <input required value={staffId} onChange={e => setStaffId(e.target.value)}
                 className="w-full px-4 py-3 text-sm text-center tracking-widest"
-                placeholder="例：yamada"
-                autoCapitalize="none"
-              />
+                placeholder="例：yamada" autoCapitalize="none" />
             </div>
-
             <div>
-              <label className="block text-xs font-semibold mb-1.5 text-center" style={{ color: '#6b7a99' }}>
-                PINコード（4桁）
-              </label>
-              <input
-                type="password"
-                inputMode="numeric"
-                pattern="\d{4}"
-                maxLength={4}
-                required
-                value={pin}
-                onChange={(e) => handlePinInput(e.target.value)}
+              <label className="block text-xs font-medium mb-1.5 text-center" style={{color:'#64748b'}}>PINコード（4桁）</label>
+              <input type="password" inputMode="numeric" pattern="\d{4}" maxLength={4}
+                required value={pin} onChange={e => handlePinInput(e.target.value)}
                 className="w-full px-4 py-3 text-center text-3xl tracking-[1rem]"
-                placeholder="••••"
-              />
+                placeholder="••••" />
               <div className="flex justify-center gap-3 mt-3">
-                {[0, 1, 2, 3].map((i) => (
-                  <div
-                    key={i}
-                    className="w-3 h-3 rounded-full transition-all duration-200"
+                {[0,1,2,3].map(i => (
+                  <div key={i} className="w-3 h-3 rounded-full transition-all duration-200"
                     style={{
-                      background: i < pin.length
-                        ? 'linear-gradient(135deg, #5b7fff, #7c5cfc)'
-                        : 'rgba(180,200,230,0.5)',
-                      transform: i < pin.length ? 'scale(1.15)' : 'scale(1)',
-                    }}
-                  />
+                      background: i < pin.length ? 'linear-gradient(135deg, #3b82f6, #8b5cf6)' : 'rgba(255,255,255,0.08)',
+                      transform: i < pin.length ? 'scale(1.2)' : 'scale(1)',
+                      boxShadow: i < pin.length ? '0 0 8px rgba(59,130,246,0.6)' : 'none',
+                    }} />
                 ))}
               </div>
             </div>
-
-            <button
-              type="submit"
-              disabled={loading || pin.length !== 4 || !staffId}
-              className="w-full text-white py-3 rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
+            <button type="submit" disabled={loading || pin.length !== 4 || !staffId}
+              className="w-full text-white py-3 rounded-xl font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
               style={{
-                background: 'linear-gradient(135deg, #5b7fff 0%, #7c5cfc 100%)',
-                boxShadow: '0 4px 16px rgba(91,127,255,0.35)',
-              }}
-            >
+                background:'linear-gradient(135deg, #1e40af, #7c3aed)',
+                boxShadow:'0 4px 20px rgba(59,130,246,0.3)',
+              }}>
               {loading ? 'ログイン中...' : 'ログイン'}
             </button>
           </form>
         </div>
 
-        <p className="text-center text-xs mt-6" style={{ color: '#a0aec0' }}>
-          公益財団法人とかち財団
-        </p>
+        <p className="text-center text-xs mt-6" style={{color:'#2d3748'}}>公益財団法人とかち財団</p>
       </div>
     </div>
   )

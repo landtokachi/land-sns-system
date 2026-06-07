@@ -7,9 +7,9 @@ export const PRIORITY_LABELS: Record<Priority, string> = {
 }
 
 export const PRIORITY_COLORS: Record<Priority, string> = {
-  high: 'bg-red-50 text-red-500 border border-red-100',
-  medium: 'bg-amber-50 text-amber-500 border border-amber-100',
-  low: 'bg-slate-100 text-slate-400 border border-slate-200',
+  high: 'bg-red-500/20 text-red-400 border border-red-500/30',
+  medium: 'bg-amber-500/20 text-amber-400 border border-amber-500/30',
+  low: 'bg-slate-500/20 text-slate-400 border border-slate-500/30',
 }
 
 export const IMPORTANCE_LABELS: Record<Importance, string> = {
@@ -32,16 +32,16 @@ export const CANDIDATE_STATUS_LABELS: Record<CandidateStatus, string> = {
 }
 
 export const CANDIDATE_STATUS_COLORS: Record<CandidateStatus, string> = {
-  unconfirmed: 'bg-slate-100 text-slate-400',
-  candidate: 'bg-blue-50 text-blue-500',
-  drafting: 'bg-purple-50 text-purple-500',
-  draft_created: 'bg-indigo-50 text-indigo-500',
-  image_created: 'bg-cyan-50 text-cyan-500',
-  review_waiting: 'bg-orange-50 text-orange-500',
-  ready: 'bg-green-50 text-green-600',
-  scheduled: 'bg-teal-50 text-teal-600',
-  published: 'bg-emerald-50 text-emerald-600',
-  skipped: 'bg-slate-100 text-slate-400',
+  unconfirmed: 'bg-slate-500/20 text-slate-400',
+  candidate: 'bg-blue-500/20 text-blue-400',
+  drafting: 'bg-purple-500/20 text-purple-400',
+  draft_created: 'bg-indigo-500/20 text-indigo-400',
+  image_created: 'bg-cyan-500/20 text-cyan-400',
+  review_waiting: 'bg-orange-500/20 text-orange-400',
+  ready: 'bg-green-500/20 text-green-400',
+  scheduled: 'bg-teal-500/20 text-teal-400',
+  published: 'bg-emerald-500/20 text-emerald-400',
+  skipped: 'bg-slate-600/20 text-slate-500',
 }
 
 export const REVIEW_STATUS_LABELS: Record<ReviewStatus, string> = {
@@ -64,12 +64,12 @@ export const POST_STATUS_LABELS: Record<PostStatus, string> = {
 }
 
 export const POST_STATUS_COLORS: Record<PostStatus, string> = {
-  draft: 'bg-slate-100 text-slate-400',
-  ready: 'bg-green-50 text-green-600',
-  scheduled: 'bg-blue-50 text-blue-500',
-  published: 'bg-emerald-50 text-emerald-600',
-  skipped: 'bg-slate-100 text-slate-400',
-  failed: 'bg-red-50 text-red-500',
+  draft: 'bg-slate-500/20 text-slate-400',
+  ready: 'bg-green-500/20 text-green-400',
+  scheduled: 'bg-blue-500/20 text-blue-400',
+  published: 'bg-emerald-500/20 text-emerald-400',
+  skipped: 'bg-slate-600/20 text-slate-500',
+  failed: 'bg-red-500/20 text-red-400',
 }
 
 export const PLATFORM_LABELS: Record<Platform, string> = {
@@ -79,9 +79,9 @@ export const PLATFORM_LABELS: Record<Platform, string> = {
 }
 
 export const PLATFORM_COLORS: Record<Platform, string> = {
-  instagram: 'bg-pink-50 text-pink-500',
-  facebook: 'bg-blue-50 text-blue-500',
-  x: 'bg-slate-100 text-slate-500',
+  instagram: 'bg-pink-500/20 text-pink-400',
+  facebook: 'bg-blue-500/20 text-blue-400',
+  x: 'bg-slate-500/20 text-slate-400',
 }
 
 export const TEMPLATE_TYPES = [

@@ -8,20 +8,15 @@ export function AppLayout({ children, title }: { children: React.ReactNode; titl
 
   return (
     <div className="app-bg flex min-h-screen">
-      {/* Sidebar: hidden on mobile (<lg), always visible on lg+ */}
+      {/* Desktop sidebar */}
       <div className="hidden lg:flex lg:flex-shrink-0">
         <Sidebar />
       </div>
-
       {/* Mobile sidebar */}
       <div className="lg:hidden">
-        <Sidebar
-          isOpen={sidebarOpen}
-          onClose={() => setSidebarOpen(false)}
-        />
+        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       </div>
-
-      {/* Main content */}
+      {/* Content */}
       <div className="flex-1 flex flex-col min-w-0">
         <Header title={title} onMenuClick={() => setSidebarOpen(true)} />
         <main className="flex-1 p-4 sm:p-6 overflow-auto">
