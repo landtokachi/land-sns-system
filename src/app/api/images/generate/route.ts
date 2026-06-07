@@ -160,7 +160,7 @@ export async function POST(request: NextRequest) {
         n: 1,
       })
 
-      const dalleUrl = dalleRes.data[0]?.url
+      const dalleUrl = dalleRes.data?.[0]?.url
       if (dalleUrl) {
         const imgRes = await fetch(dalleUrl, { signal: AbortSignal.timeout(30000) })
         const arrayBuf = await imgRes.arrayBuffer()
