@@ -1,101 +1,116 @@
 @import "tailwindcss";
 
-:root {
-  --sidebar-w: 200px;
-}
-
 * { box-sizing: border-box; }
 
 html, body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans JP', sans-serif;
   min-height: 100vh;
   color: #e2e8f0;
+  overflow-x: hidden;
 }
 
-/* Scrollbar */
-::-webkit-scrollbar { width: 5px; height: 5px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.25); }
-
-/* App background - glazzed style */
+/* =============================================
+   GLAZZED-style background gradient
+   Left: dark steel blue → Right: deep pink/magenta
+   ============================================= */
 .app-bg {
   background:
-    radial-gradient(ellipse at 80% 50%, rgba(180, 60, 120, 0.18) 0%, transparent 55%),
-    radial-gradient(ellipse at 20% 80%, rgba(40, 80, 180, 0.20) 0%, transparent 50%),
-    radial-gradient(ellipse at 60% 20%, rgba(80, 40, 160, 0.15) 0%, transparent 45%),
-    linear-gradient(160deg, #0d1829 0%, #0f1e38 40%, #111428 70%, #0e1520 100%);
+    linear-gradient(105deg,
+      #0c1a2e 0%,
+      #0f2040 15%,
+      #12204a 28%,
+      #1a1a50 38%,
+      #221540 48%,
+      #2e1035 58%,
+      #3a0f2e 68%,
+      #3d1025 78%,
+      #2a0c18 88%,
+      #1a0810 100%
+    );
   background-attachment: fixed;
   min-height: 100vh;
 }
 
-/* Glass card - dark */
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 4px; }
+
+/* =============================================
+   Glass cards
+   ============================================= */
 .glass-card {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.10);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-radius: 16px;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
-}
-
-.glass-card-light {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background: rgba(20, 35, 65, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
   border-radius: 14px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
 }
 
-/* Inputs */
+.glass-card-sm {
+  background: rgba(20, 30, 60, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-radius: 10px;
+}
+
+/* =============================================
+   Form inputs
+   ============================================= */
 input, textarea, select {
   background: rgba(255, 255, 255, 0.07) !important;
-  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
   color: #e2e8f0 !important;
-  border-radius: 10px !important;
-  transition: border-color 0.15s, background 0.15s;
+  border-radius: 8px !important;
 }
-input::placeholder, textarea::placeholder { color: #4a5568 !important; }
+input::placeholder, textarea::placeholder { color: #3d4f6a !important; }
 input:focus, textarea:focus, select:focus {
-  border-color: rgba(99, 149, 255, 0.6) !important;
+  border-color: rgba(99, 149, 255, 0.5) !important;
   background: rgba(255, 255, 255, 0.10) !important;
   outline: none !important;
-  box-shadow: 0 0 0 3px rgba(99, 149, 255, 0.12) !important;
+  box-shadow: 0 0 0 2px rgba(99, 149, 255, 0.15) !important;
 }
-select option { background: #1a2340; color: #e2e8f0; }
+select option { background: #1a2744; color: #e2e8f0; }
 
-/* Table */
+/* =============================================
+   Table
+   ============================================= */
 table { width: 100%; border-collapse: collapse; }
 th {
-  color: #94a3b8;
-  font-size: 0.72rem;
-  font-weight: 600;
+  color: #64748b;
+  font-size: 0.7rem;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.07em;
   padding: 0.75rem 1rem;
-  border-bottom: 1px solid rgba(255,255,255,0.08);
+  border-bottom: 1px solid rgba(255,255,255,0.07);
   text-align: left;
   background: rgba(255,255,255,0.02);
 }
 td {
   padding: 0.875rem 1rem;
   border-bottom: 1px solid rgba(255,255,255,0.05);
-  color: #cbd5e1;
+  color: #94a3b8;
   font-size: 0.875rem;
 }
-tr:hover td { background: rgba(255,255,255,0.04); }
+tr:hover td { background: rgba(255,255,255,0.03); }
 
-/* Sidebar overlay mobile */
+/* =============================================
+   Nav active state (Glazzed style)
+   ============================================= */
+.nav-active {
+  background: rgba(59, 130, 246, 0.18) !important;
+  border-left: 3px solid #3b82f6 !important;
+  color: #fff !important;
+}
+
+/* Mobile overlay */
 .sidebar-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.55);
+  background: rgba(0,0,0,0.6);
   z-index: 40;
   backdrop-filter: blur(3px);
-}
-
-/* Active nav glow */
-.nav-active {
-  background: linear-gradient(90deg, rgba(55, 120, 255, 0.22) 0%, rgba(55, 120, 255, 0.08) 100%);
-  border-left: 3px solid #3b82f6;
 }
