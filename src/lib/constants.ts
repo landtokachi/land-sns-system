@@ -7,9 +7,9 @@ export const PRIORITY_LABELS: Record<Priority, string> = {
 }
 
 export const PRIORITY_COLORS: Record<Priority, string> = {
-  high: 'bg-red-50 text-red-600 border border-red-100 font-semibold',
+  high: 'bg-rose-50 text-rose-600 border border-rose-100 font-semibold',
   medium: 'bg-amber-50 text-amber-600 border border-amber-100 font-semibold',
-  low: 'bg-slate-100 text-slate-500 border border-slate-200',
+  low: 'bg-violet-50 text-violet-400 border border-violet-100',
 }
 
 export const IMPORTANCE_LABELS: Record<Importance, string> = {
