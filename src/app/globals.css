@@ -1,145 +1,154 @@
 @import "tailwindcss";
 
+:root {
+  --accent: #6366f1;
+  --accent2: #8b5cf6;
+  --bg: #eef0fb;
+  --card: #ffffff;
+  --text: #1e1b4b;
+  --text2: #6b7a99;
+  --text3: #a0aec0;
+  --border: rgba(99,102,241,0.12);
+}
+
 * { box-sizing: border-box; }
 
 html, body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans JP', sans-serif;
   min-height: 100vh;
-  color: #e2e8f0;
+  color: var(--text);
 }
 
-/* =====================================================
-   BACKGROUND — Deep dark + dramatic pink/purple sweep
-   ===================================================== */
+/* =============================================
+   BACKGROUND — FundFlow風 淡いラベンダー
+   ============================================= */
 .app-bg {
   background:
-    radial-gradient(ellipse at 88% 40%, rgba(219, 39, 119, 0.16) 0%, transparent 42%),
-    radial-gradient(ellipse at 12% 70%, rgba(59, 130, 246, 0.14) 0%, transparent 38%),
-    radial-gradient(ellipse at 55% 5%,  rgba(124, 58, 237, 0.12) 0%, transparent 35%),
-    linear-gradient(150deg, #141726 0%, #181a35 30%, #1a1240 58%, #160e2e 82%, #131222 100%);
+    radial-gradient(ellipse at 15% 15%, rgba(139,92,246,0.10) 0%, transparent 45%),
+    radial-gradient(ellipse at 85% 85%, rgba(99,102,241,0.08) 0%, transparent 45%),
+    radial-gradient(ellipse at 80% 10%, rgba(167,139,250,0.07) 0%, transparent 35%),
+    linear-gradient(145deg, #ecedfa 0%, #f0f2fc 40%, #edeef8 70%, #f2f0fd 100%);
   background-attachment: fixed;
   min-height: 100vh;
 }
 
-/* =====================================================
-   GLASS CARDS
-   ===================================================== */
+/* =============================================
+   GLASS CARD — 白ベースのクリーンカード
+   ============================================= */
 .glass-card {
-  background: rgba(255, 255, 255, 0.055);
-  border: 1px solid rgba(255, 255, 255, 0.095);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(99, 102, 241, 0.10);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 18px;
   box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.07);
-  transition: box-shadow 0.2s;
+    0 2px 8px rgba(99, 102, 241, 0.06),
+    0 8px 24px rgba(99, 102, 241, 0.05),
+    inset 0 1px 0 rgba(255,255,255,0.9);
+  transition: box-shadow 0.2s, transform 0.15s;
 }
-
 .glass-card:hover {
   box-shadow:
-    0 12px 40px rgba(0, 0, 0, 0.5),
-    inset 0 1px 0 rgba(255, 255, 255, 0.10);
+    0 4px 16px rgba(99, 102, 241, 0.10),
+    0 12px 32px rgba(99, 102, 241, 0.07);
 }
 
-.glass-inner {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  border-radius: 14px;
-  backdrop-filter: blur(10px);
-}
-
-/* =====================================================
+/* =============================================
    SCROLLBAR
-   ===================================================== */
-::-webkit-scrollbar { width: 4px; height: 4px; }
+   ============================================= */
+::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.10); border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.20); }
+::-webkit-scrollbar-thumb { background: rgba(99,102,241,0.2); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(99,102,241,0.35); }
 
-/* =====================================================
+/* =============================================
    INPUTS
-   ===================================================== */
+   ============================================= */
 input, textarea, select {
-  background: rgba(255, 255, 255, 0.06) !important;
-  border: 1px solid rgba(255, 255, 255, 0.10) !important;
-  color: #e2e8f0 !important;
-  border-radius: 12px !important;
-  transition: all 0.2s;
+  background: rgba(255,255,255,0.9) !important;
+  border: 1.5px solid rgba(99,102,241,0.15) !important;
+  color: #1e1b4b !important;
+  border-radius: 10px !important;
+  transition: all 0.15s;
 }
-input::placeholder, textarea::placeholder { color: #334155 !important; }
+input::placeholder, textarea::placeholder { color: #c4b5fd !important; }
 input:focus, textarea:focus, select:focus {
-  border-color: rgba(139, 92, 246, 0.6) !important;
-  background: rgba(255, 255, 255, 0.09) !important;
+  border-color: rgba(99,102,241,0.45) !important;
+  background: #fff !important;
   outline: none !important;
-  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.15) !important;
+  box-shadow: 0 0 0 3px rgba(99,102,241,0.10) !important;
 }
-select option { background: #1e1b4b; color: #e2e8f0; }
+select option { background: #fff; color: #1e1b4b; }
 
-/* =====================================================
+/* =============================================
    TABLE
-   ===================================================== */
+   ============================================= */
 table { width: 100%; border-collapse: collapse; }
 th {
-  color: #475569;
+  color: #a0aec0;
   font-size: 0.7rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.07em;
   padding: 0.75rem 1rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1.5px solid rgba(99,102,241,0.08);
   text-align: left;
-  background: rgba(255,255,255,0.02);
+  background: rgba(99,102,241,0.02);
 }
 td {
   padding: 0.875rem 1rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-  color: #94a3b8;
+  border-bottom: 1px solid rgba(99,102,241,0.05);
+  color: #3730a3;
   font-size: 0.875rem;
 }
-tr:hover td { background: rgba(255, 255, 255, 0.03); }
+tr:hover td { background: rgba(99,102,241,0.03); }
 
-/* =====================================================
+/* =============================================
    NAV ACTIVE
-   ===================================================== */
+   ============================================= */
 .nav-active {
-  background: linear-gradient(90deg, rgba(139,92,246,0.22), rgba(99,102,241,0.10)) !important;
-  border-left: 2px solid #8b5cf6 !important;
-  color: #c4b5fd !important;
+  background: linear-gradient(90deg, rgba(99,102,241,0.12), rgba(139,92,246,0.06)) !important;
+  border-left: 2.5px solid #6366f1 !important;
+  color: #4f46e5 !important;
 }
 
-/* =====================================================
+/* =============================================
    MOBILE OVERLAY
-   ===================================================== */
+   ============================================= */
 .sidebar-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.65);
+  background: rgba(99,102,241,0.12);
   z-index: 40;
   backdrop-filter: blur(4px);
 }
 
-/* =====================================================
+/* =============================================
    GRADIENT TEXT
-   ===================================================== */
+   ============================================= */
 .gradient-text {
-  background: linear-gradient(135deg, #c4b5fd, #a5b4fc, #93c5fd);
+  background: linear-gradient(135deg, #6366f1, #8b5cf6, #a78bfa);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
-/* =====================================================
+/* =============================================
    GLOW BUTTON
-   ===================================================== */
+   ============================================= */
 .btn-glow {
-  background: linear-gradient(135deg, #7c3aed, #6366f1);
-  box-shadow: 0 4px 20px rgba(124, 58, 237, 0.45), 0 0 0 1px rgba(139,92,246,0.2);
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  box-shadow: 0 4px 16px rgba(99,102,241,0.35);
   color: white;
   border: none;
   transition: all 0.2s;
 }
 .btn-glow:hover {
-  box-shadow: 0 6px 28px rgba(124, 58, 237, 0.60), 0 0 0 1px rgba(139,92,246,0.3);
+  box-shadow: 0 6px 24px rgba(99,102,241,0.50);
   transform: translateY(-1px);
+}
+.btn-glow:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
 }
