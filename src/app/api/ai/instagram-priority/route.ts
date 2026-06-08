@@ -9,18 +9,17 @@ const adminSupabase = createAdmin(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-// @land.tokachi Instagramの分析に基づく優先度マッピング
-const LAND_INSTAGRAM_PRIORITY: Record<string, 'high' | 'medium' | 'low'> = {
-  '補助金・助成金・支援制度': 'high',  // 最多投稿カテゴリ
-  'イベント・セミナー': 'high',         // 地域イベント多数
-  'LANDの取り組み': 'high',            // 自施設コンテンツ
-  'とかち財団の取り組み': 'high',       // 親組織の取り組み
-  'お知らせ・募集': 'medium',
-  '事業者紹介': 'medium',
-  '採択者・卒業生・支援先のその後': 'medium',
-  '活動レポート': 'medium',
-  '学生起業支援': 'medium',
-  'コラム・ノウハウ': 'low',
+const LAND_PRIORITY: Record<string, string> = {
+  '\u88dc\u52a9\u91d1\u30fb\u52a9\u6210\u91d1\u30fb\u652f\u63f4\u5236\u5ea6': 'high',
+  '\u30a4\u30d9\u30f3\u30c8\u30fb\u30bb\u30df\u30ca\u30fc': 'high',
+  'LAND\u306e\u53d6\u308a\u7d44\u307f': 'high',
+  '\u3068\u304b\u3061\u8ca1\u56e3\u306e\u53d6\u308a\u7d44\u307f': 'high',
+  '\u304a\u77e5\u3089\u305b\u30fb\u52df\u96c6': 'medium',
+  '\u4e8b\u696d\u8005\u7d39\u4ecb': 'medium',
+  '\u6d3b\u52d5\u30ec\u30dd\u30fc\u30c8': 'medium',
+  '\u5b66\u751f\u8d77\u696d\u652f\u63f4': 'medium',
+  '\u63a1\u629e\u8005\u30fb\u5352\u696d\u751f\u30fb\u652f\u63f4\u5148\u306e\u305d\u306e\u5f8c': 'medium',
+  '\u30b3\u30e9\u30e0\u30fb\u30ce\u30a6\u30cf\u30a6': 'low',
 }
 
 function extractTextFromHtml(html: string): string {
@@ -30,17 +29,16 @@ function extractTextFromHtml(html: string): string {
   return text.replace(/\s+/g, ' ').trim().slice(0, 5000)
 }
 
-// POST: Instagramを分析して優先度を学習し、候補に適用
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   try {
-    const { handle, applyToAll } = await request.json().catch(() => ({}))
-    const igHandle = handle || 'land.tokachi'
+    const body = await request.json().catch(() => ({}))
+    const igHandle = (body as { handle?: string }).handle || 'land.tokachi'
+    const applyToAll = (body as { applyToAll?: boolean }).applyToAll || false
 
-    // Instagram公開ページを取得（テキスト抽出）
     let igPageText = ''
     try {
       const res = await fetch('https://www.instagram.com/' + igHandle + '/', {
@@ -48,43 +46,34 @@ export async function POST(request: NextRequest) {
         signal: AbortSignal.timeout(8000),
       })
       if (res.ok) igPageText = extractTextFromHtml(await res.text())
-    } catch { /* Instagram fetch failed - use preloaded knowledge */ }
+    } catch { /* use preloaded knowledge */ }
 
-    // OpenAIで投稿パターンを分析
-    const prompt = [
-      'あなたはSNS戦略アナリストです。',
-      '',
-      'Instagram @' + igHandle + ' の投稿パターンを分析してください。',
-      'このアカウントはスタートアップ支援施設「LAND」（北海道十勝・帯広、公益財団法人とかち財団運営）のものです。',
-      '',
-      '【既知の情報 - @land.tokachi の投稿分析（2024年〜2026年）】',
-      '- 投稿1601件、フォロワー1444人',
-      '- ハイライト: KAIKON（開墾）、十勝アグリ、TokachiEGG、爆風2023、TIP告知、トカチダネ',
-      '- 最近の投稿内容（頻度順）:',
-      '  1位: 補助金・助成金情報（小規模事業者持続化補助金、とかちビジネスチャレンジ補助金など）',
-      '  2位: 地域セミナー・イベント（副業・兼業人材活用ミニセミナー、地域フード塾など）',
-      '  3位: LAND施設の利用方法・プログラム（REALIZE CAFE、4つのステージなど）',
-      '  4位: 起業家向けコラム・情報（やるか、やらないか、など）',
-      '  5位: 十勝・北海道の農業・食産業情報',
-      '',
-      igPageText ? ('【Instagram実際のページテキスト（抜粋）】\n' + igPageText) : '（Instagramページは動的レンダリングのため取得できず）',
-      '',
-      '以下のJSON形式で投稿優先度の分析結果を返してください:',
-      '{',
-      '  "insights": ["観察した投稿パターン1", "観察した投稿パターン2", "観察した投稿パターン3"],',
-      '  "top_categories": ["最重要カテゴリ1", "最重要カテゴリ2", "最重要カテゴリ3"],',
-      '  "priority_weights": {',
-      '    "補助金・助成金・支援制度": "high",',
-      '    "イベント・セミナー": "high",',
-      '    "LANDの取り組み": "high",
-      '    "とかち財団の取り組み": "high",',
-      '    "お知らせ・募集": "medium",',
-      '    "事業者紹介": "medium",',
-      '    "コラム・ノウハウ": "low"',
-      '  },',
-      '  "recommendation": "今後の投稿戦略アドバイス（100文字以内）"',
-      '}'
+    const igInfo = [
+      '@land.tokachi Instagram analysis (1601 posts, 1444 followers):',
+      '- Highlights: KAIKON, TokachAgri, TokachiEGG, Bakufu2023, TIP, Tokachiname',
+      '- Most frequent: grants/subsidies (with deadlines), local seminars/events',
+      '- Regular: LAND programs (REALIZE CAFE, 4 stages), startup info',
+      '- Occasional: agri/food industry, entrepreneurship columns',
+      igPageText ? 'Live page text: ' + igPageText.slice(0, 1000) : '(live fetch not available)',
     ].join('\n')
+
+    const prompt = 'You are an SNS strategy analyst for LAND startup support facility in Tokachi, Hokkaido.\n' +
+      'Analyze the Instagram posting patterns of @' + igHandle + ' and return priority weights.\n\n' +
+      'Known information:\n' + igInfo + '\n\n' +
+      'Return JSON only:\n' +
+      '{' +
+      '  "insights": ["pattern1", "pattern2", "pattern3"],' +
+      '  "top_categories": ["cat1", "cat2", "cat3"],' +
+      '  "priority_weights": {' +
+      '    "\u88dc\u52a9\u91d1\u30fb\u52a9\u6210\u91d1\u30fb\u652f\u63f4\u5236\u5ea6": "high",' +
+      '    "\u30a4\u30d9\u30f3\u30c8\u30fb\u30bb\u30df\u30ca\u30fc": "high",' +
+      '    "LAND\u306e\u53d6\u308a\u7d44\u307f": "high",' +
+      '    "\u3068\u304b\u3061\u8ca1\u56e3\u306e\u53d6\u308a\u7d44\u307f": "high",' +
+      '    "\u304a\u77e5\u3089\u305b\u30fb\u52df\u96c6": "medium",' +
+      '    "\u30b3\u30e9\u30e0\u30fb\u30ce\u30a6\u30cf\u30a6": "low"' +
+      '  },' +
+      '  "recommendation": "strategy advice in Japanese (100 chars)"' +
+      '}'
 
     const response = await openai.chat.completions.create({
       model: 'gpt-4o',
@@ -94,9 +83,8 @@ export async function POST(request: NextRequest) {
     })
 
     const analysis = JSON.parse(response.choices[0].message.content || '{}')
-    const weights: Record<string, string> = analysis.priority_weights || LAND_INSTAGRAM_PRIORITY
+    const weights: Record<string, string> = analysis.priority_weights || LAND_PRIORITY
 
-    // applyToAllがtrueの場合、未確認候補の優先度を一括更新
     let updatedCount = 0
     if (applyToAll) {
       const { data: candidates } = await adminSupabase
@@ -106,25 +94,18 @@ export async function POST(request: NextRequest) {
 
       if (candidates && candidates.length > 0) {
         const updates = candidates
-          .filter(c => c.category && weights[c.category] && weights[c.category] !== c.priority)
-          .map(c => ({ id: c.id, priority: weights[c.category] as string }))
-
+          .filter((c: { category: string; priority: string }) => c.category && weights[c.category] && weights[c.category] !== c.priority)
+          .map((c: { id: string; category: string }) => ({ id: c.id, priority: weights[c.category] }))
         for (const update of updates) {
-          await adminSupabase.from('post_candidates')
-            .update({ priority: update.priority })
-            .eq('id', update.id)
+          await adminSupabase.from('post_candidates').update({ priority: update.priority }).eq('id', update.id)
         }
         updatedCount = updates.length
       }
     }
 
-    return NextResponse.json({
-      analysis,
-      priority_weights: weights,
-      updated_count: updatedCount,
-    })
+    return NextResponse.json({ analysis, priority_weights: weights, updated_count: updatedCount })
   } catch (error) {
     console.error('instagram-priority error:', error)
-    return NextResponse.json({ error: '分析に失敗しました' }, { status: 500 })
+    return NextResponse.json({ error: '\u5206\u6790\u306b\u5931\u6557\u3057\u307e\u3057\u305f' }, { status: 500 })
   }
 }
