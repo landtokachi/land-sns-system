@@ -197,7 +197,7 @@ ${extractionGuide}
 
 8. Instagramキャプションは800〜1200文字程度（詳しく・情報量を豊富に）
 
-9. ハッシュタグ: 補助金は `#landtokachi #補助金名` 程度。イベントは `#landtokachi #帯広 #起業` など
+9. ハッシュタグ: 補助金は「#landtokachi #補助金名」程度。イベントは「#landtokachi #帯広 #起業」など
 
 以下のJSON形式のみで返してください:
 {
