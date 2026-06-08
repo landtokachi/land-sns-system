@@ -19,18 +19,22 @@ export async function generateSocialPosts(candidate: Partial<PostCandidate>): Pr
     sourceName: (candidate as { source_name?: string }).source_name || '',
   }
 
-  const isLandOwn  = info.category.includes('LAND') || info.category.includes('とかち財団') || info.category.includes('活動')
-  const isSubsidy  = info.category.includes('補助金') || info.category.includes('助成')
-  const isEvent    = info.category.includes('イベント') || info.category.includes('セミナー')
+  const isLandOwn   = info.category.includes('LAND') || info.category.includes('とかち財団') || info.category.includes('活動')
+  const isSubsidy   = info.category.includes('補助金') || info.category.includes('助成')
+  const isEvent     = info.category.includes('イベント') || info.category.includes('セミナー')
   const isLandscape = info.category.includes('事業者紹介') || info.category.includes('採択者')
+
+  // 情報源テキストが十分にあるか確認
+  const sourceText = info.rawText || info.summary || ''
+  const hasRichSource = sourceText.length > 300
 
   // URLから情報元機関を自動判定
   let sourceOrg = info.organizer || info.sourceName || ''
   if (!sourceOrg && info.sourceUrl) {
     try {
       const domain = new URL(info.sourceUrl).hostname.replace('www.', '')
-      if (domain.includes('chusho.meti.go.jp') || domain.includes('jizokukahojokin') || domain.includes('monodukuri-hojo') || domain.includes('it-hojo') || domain.includes('mirasapo') || domain.includes('jigyou-saikouchiku')) sourceOrg = '中小企業庁'
-      else if (domain.includes('smrj.go.jp') || domain.includes('j-net21')) sourceOrg = '中小企業基盤整備機構（J-Net21）'
+      if (domain.includes('chusho.meti.go.jp') || domain.includes('mirasapo') || domain.includes('jigyou-saikouchiku')) sourceOrg = '中小企業庁'
+      else if (domain.includes('smrj.go.jp') || domain.includes('j-net21')) sourceOrg = '中小企業基盤整備機構'
       else if (domain.includes('pref.hokkaido')) sourceOrg = '北海道庁'
       else if (domain.includes('hkd.meti.go.jp')) sourceOrg = '北海道経済産業局'
       else if (domain.includes('hsc.or.jp')) sourceOrg = '北海道中小企業総合支援センター'
@@ -39,47 +43,37 @@ export async function generateSocialPosts(candidate: Partial<PostCandidate>): Pr
       else if (domain.includes('toshinkn.or.jp')) sourceOrg = '十勝産業振興センター'
       else if (domain.includes('maff.go.jp')) sourceOrg = '農林水産省'
       else if (domain.includes('jfc.go.jp')) sourceOrg = '日本政策金融公庫'
-      else if (domain.includes('tokachi-foundation') || domain.includes('tokachi-zaidan')) sourceOrg = 'とかち財団'
+      else if (domain.includes('tokachi-zaidan') || domain.includes('tokachi-foundation')) sourceOrg = 'とかち財団'
     } catch { /* ignore */ }
   }
 
   const urlForPost = info.applyUrl || info.sourceUrl || ''
 
-  // =====================================================
-  // LANDの実際の投稿スタイル参考例
-  // =====================================================
   const EXAMPLE_SUBSIDY = `
 【補助金投稿の参考例（このスタイルで書く）】
 ＼「小規模事業者持続化補助金」のご案内です📣／
-経営計画に基づいて販路開拓を行う費用を支援してくれる「小規模事業者持続化補助金」の最新公募がスタートしています！✨💰
+経営計画に基づいて販路開拓を行う費用を支援する「小規模事業者持続化補助金」の最新公募がスタートしています！✨💰
 
 ＜概要＞
 💰 【補助上限額・補助率】
-用途や条件に合わせて、複数の枠が用意されています！
-
 通常枠：上限 50万円（補助率 2/3）
-創業枠など（特別枠）：上限 200万円（補助率 2/3 または 3/4）
-※さらに、インボイス特例の要件を満たすことで上限額が上乗せされる場合もあります！
+特別枠（賃金引上げ枠、インボイス枠など）：上限 200万円
 
-📅 【募集期間・スケジュール】
+📅 【募集スケジュール】
 ・申請受付開始：11月5日（木）
 ・申請締切：12月15日（火）17:00 必着
 🚨ここがポイント：
-申請に必須となる商工会・商工会議所での「事業支援計画書」の発行受付は【12月4日（金）】で締め切られます。書類の即日発行はできないため、11月中には地域の窓口へご相談されることを強くおすすめします！
+商工会・商工会議所での「事業支援計画書」の発行受付は【12月4日（金）】で締め切られます。
+書類の即日発行はできないため、11月中には地域の窓口へご相談を！
 
 🏢 【こんな経費に活用できます💡】
-・Webサイトやオンラインショップの構築、リニューアル
-・チラシ、カタログ、パンフレットの作成・配布
-・Web広告やSNS広告の出稿
-・店舗の改装、看板の設置
-・新商品開発のためのパッケージデザイン費用 …など
+・Webサイトやオンラインショップの構築
+・チラシ・パンフレットの作成・配布
+・Web広告・SNS広告の出稿
+・店舗改装・看板設置
+・新商品開発のパッケージデザイン費 …など
 
-「自分の事業は対象になる？」など、詳しい公募要領は公式のまとめサイトで公開されています。
-管轄の商工会・商工会議所のサポートを受けながら進められるので、初めて補助金を申請する方も安心ですよ😊
-
-事業を次のステップへ進める大きなチャンスです。
 ぜひ一度、こちらのリンクから詳細をご確認ください👇
-
 🔗 ${urlForPost}
 
 #landtokachi #小規模事業者持続化補助金
@@ -88,126 +82,117 @@ export async function generateSocialPosts(candidate: Partial<PostCandidate>): Pr
   const EXAMPLE_EVENT = `
 【イベント投稿の参考例（このスタイルで書く）】
 ＼○月○日（曜日）開催！「○○セミナー」参加者募集中📣／
-○○についてのセミナーを開催します！✨
 
 📅 【開催日時】
 ○月○日（曜日）○○:○○〜○○:○○
 
 📍 【会場】
 LAND（帯広市大通南8丁目6番地）
-※オンライン参加も可能です
 
 ✅ 【参加費】
 無料（事前申込制）
 
 👥 【対象者】
-○○を検討している方、○○に興味のある方
+○○を検討している方
 
 📝 【内容】
 ・○○について
-・○○の実例紹介
 ・質疑応答
 
-⏰ 【申込締切】
-○月○日（曜日）まで
-
 お申込みは👇のリンクから
-
 🔗 ${urlForPost}
 
-#landtokachi #帯広 #起業 #セミナー
+#landtokachi #帯広 #起業
 `
 
-  // プロンプト構築
   const styleExample = isSubsidy ? EXAMPLE_SUBSIDY : isEvent ? EXAMPLE_EVENT : ''
-
-  const extractionGuide = isSubsidy ? `
-【補助金・支援制度 ― 情報源テキストから以下を全て抽出して投稿文に盛り込むこと】
-
-1. 補助金の目的・どんな取り組みを支援するか（1〜2文で分かりやすく）
-2. 補助枠の種類と金額（複数ある場合は全て列挙。例: 通常枠: ○○万円、特別枠: ○○万円）
-3. 補助率（例: 2/3、3/4）
-4. 申請スケジュール（受付開始日・締切日・時刻まで）
-5. 重要な注意点・ポイント（例: 商工会の書類締切が別にある など）
-6. 対象経費・使い道の具体例（リスト形式で5〜8個）
-7. 対象者（どんな事業者が申請できるか）
-8. 申請方法・窓口（商工会経由 など）
-
-⚠️ 情報源テキストに書いてない情報は絶対に作らない。不明な場合は省略。` : isEvent ? `
-【イベント・セミナー ― 情報源テキストから以下を全て抽出して投稿文に盛り込むこと】
-
-1. イベントの目的・内容（具体的に）
-2. 開催日時（日付・曜日・時刻）
-3. 会場（場所名・住所 または オンライン）
-4. 参加費（無料/有料・金額）
-5. 定員
-6. 対象者（誰向けか）
-7. 内容・プログラム（箇条書きで）
-8. 登壇者・スピーカー（いれば）
-9. 申込方法・締切
-
-⚠️ 情報源テキストに書いてない情報は絶対に作らない。` : isLandscape ? `
-【事業者紹介（LANDSCAPE）― 情報源テキストから以下を抽出】
-1. 取材対象者名・企業名
-2. 事業内容・取り組みの具体的な説明
-3. 特徴・強み・ユニークな点
-4. 「十勝の事業創発につながる企業の取り組みを、LANDスタッフが取材し紹介する「LANDSCAPE」🙋‍♀️🙋🙋‍♂️」の一文を含める` : `
-【その他コンテンツ ― 情報源テキストから以下を抽出して詳しく書く】
-1. 内容の具体的な説明
-2. 対象者
-3. 重要な日程・金額・条件（あれば）
-4. 実用的なポイント・注意点`
 
   const prompt = `あなたはスタートアップ支援施設「LAND」（公益財団法人とかち財団運営、北海道帯広）のSNS担当です。
 
-${styleExample ? `以下の参考例を見て、同じスタイル・詳しさ・構成で書いてください：\n${styleExample}\n━━━━━━━━━━━━━━━━━━━━━━\n` : ''}
+━━━━━━━━━━━━━━━━━━━━━━
+🚫🚫🚫 最重要ルール：情報の捏造・推測を絶対禁止 🚫🚫🚫
+
+以下の情報は、情報源テキストに【明記されている場合のみ】投稿文に書くこと。
+情報源テキストに書かれていない場合は、その項目を書いてはいけない：
+
+❌ 書いてはいけない（情報源にない場合）：
+- 補助金の金額・上限額（例: 「100万円」「200万円」）
+- 補助率（例: 「2/3」「3/4」「補助率〇割」）
+- 枠の名前・種類（例: 「通常枠」「特別枠」）
+- 申請締切日・受付開始日の具体的な日付
+- 必要書類・申請要件の具体的な条件
+- 採択件数・予算規模
+- 「事業計画書の提出が必須」などの申請要件の詳細
+
+✅ 代わりに書くこと（情報が不明な場合）：
+- 「補助金額・補助率など詳細は公式サイトをご確認ください」
+- 「申請要件・スケジュールは公式サイトに掲載されています」
+
+理由：誤った金額・条件を投稿すると申請者に迷惑をかける可能性があります。
+情報源テキストに書いてある事実だけを使い、不明なことは「公式サイトで確認」と書く。
+━━━━━━━━━━━━━━━━━━━━━━
+
+${styleExample ? `【参考スタイル（このスタイルで書くこと）】\n${styleExample}\n━━━━━━━━━━━━━━━━━━━━━━\n` : ''}
 
 【今回の投稿情報】
 タイトル: ${info.title}
 カテゴリ: ${info.category || '（未設定）'}
-情報発信元・主催機関: ${sourceOrg || '（情報源テキストから確認すること）'}
+主催・情報元: ${sourceOrg || '（情報源テキストから確認）'}
 ${info.audience ? `対象者: ${info.audience}` : ''}
 ${info.eventDate ? `開催日: ${info.eventDate}` : ''}
 ${info.deadline ? `申込締切: ${info.deadline}` : ''}
-${urlForPost ? `情報源URL: ${urlForPost}` : ''}
-${info.region ? `対象地域: ${info.region}` : ''}
+${urlForPost ? `URL: ${urlForPost}` : ''}
+${info.region ? `地域: ${info.region}` : ''}
 
-【★最重要: 情報源の詳細テキスト（このテキストから正確な情報を抽出すること）】
-${info.rawText ? info.rawText.slice(0, 4500) : info.summary || '（情報源テキストなし）'}
+【情報源テキスト（★これ以外の情報は使用禁止）】
+${sourceText ? sourceText.slice(0, 4500) : '（情報源テキストなし）'}
+
+${!hasRichSource ? `
+⚠️ 注意: 情報源テキストが少ないため、具体的な金額・日程・条件が不明です。
+不明な情報は「詳細は公式サイトをご確認ください」と書き、絶対に推測・補完しないこと。
+` : ''}
 
 ━━━━━━━━━━━━━━━━━━━━━━
-${extractionGuide}
+【投稿文の作成ルール】
 
-━━━━━━━━━━━━━━━━━━━━━━
-【絶対に守るルール】
+1. 冒頭は「＼〇〇〇／」形式で始める
 
-1. 冒頭は「＼〇〇〇／」形式の見出しから始める
+2. 情報の帰属:
+${isLandOwn
+  ? 'この情報はLAND・とかち財団の情報なのでLANDの活動として書く。'
+  : `「${sourceOrg || '〇〇'}」が発信している情報をLANDが紹介する形で書く。「LANDより」「とかち財団より」と書かない。`}
 
-2. ${isLandOwn ? 'この情報はLAND・とかち財団の情報なのでLANDの活動として書く。' : `情報の帰属: この情報は「${sourceOrg || '〇〇'}」が出している情報。「公益財団法人とかち財団より」「LANDより」とは書かない。LANDはこの情報を紹介しているだけ。`}
+3. 【★最重要】情報源テキストに書いてある情報だけを使う
+   - 金額・補助率・日程・要件は情報源テキストに書いてある場合のみ記載
+   - 書いていない情報は「詳細は公式サイトをご確認ください」で代替
 
-3. 情報の正確性: 情報源テキストにある情報だけを使う。AIが勝手に情報を作らない。
+4. 絵文字でセクションを分ける（💰📅🏢✅📝👥 など）
 
-4. 詳しく書く: 上記「抽出すること」の項目を全て投稿文に含める。参考例と同じレベルの詳しさで書く。
+5. 末尾に「ぜひ一度、こちらのリンクから詳細をご確認ください👇」
+   🔗 ${urlForPost || '（URL未設定）'}
 
-5. 絵文字を使ってセクションを見やすく分ける（💰📅🏢🚨✅📝👥 など）
+6. ハッシュタグ: #landtokachi + 補助金名やイベント名
 
-6. 投稿末尾にURLを記載（🔗 マークで）
+${isSubsidy ? `
+【補助金の場合 ― 情報源テキストにある情報のみ記載】
+✓ 書いてよい: 補助金の目的・概要、情報源に書いてある金額・枠・締切日、対象者
+✗ 書いてはいけない: 情報源に書いていない金額・補助率・必要書類・申請条件
+` : ''}
+${isEvent ? `
+【イベントの場合 ― 情報源テキストにある情報のみ記載】
+✓ 書いてよい: 開催日時・会場・参加費・内容・申込方法（すべて情報源テキストに記載のもの）
+✗ 書いてはいけない: 情報源に書いていない定員数・登壇者・内容詳細
+` : ''}
 
-7. 締め文は「ぜひ一度、こちらのリンクから詳細をご確認ください👇」などの形式
-
-8. Instagramキャプションは800〜1200文字程度（詳しく・情報量を豊富に）
-
-9. ハッシュタグ: 補助金は「#landtokachi #補助金名」程度。イベントは「#landtokachi #帯広 #起業」など
-
-以下のJSON形式のみで返してください:
+以下のJSON形式のみで返してください（説明文・コメント不要）:
 {
-  "instagram_caption": "完全な投稿文（参考例のスタイルで・詳しく・情報豊富に）",
-  "facebook_text": "Facebook投稿文（Instagramとほぼ同構成）",
+  "instagram_caption": "完全な投稿文（情報源テキストの事実のみ使用）",
+  "facebook_text": "Facebook投稿文（Instagramとほぼ同じ）",
   "x_text": "X投稿文（140字以内・冒頭＼〇〇〇／・URL末尾）",
   "hashtags": "ハッシュタグ（スペース区切り）",
-  "story_text": "ストーリーズ用（30〜40文字・金額や日程入り）",
+  "story_text": "ストーリーズ用（30〜40文字）",
   "image_title": "画像タイトル（20文字以内）",
-  "image_subtitle": "画像サブテキスト（30文字以内・補助金額か日程など）",
+  "image_subtitle": "画像サブテキスト（30文字以内・情報源テキストにある情報のみ）",
   "image_points": ["ポイント1（15文字以内）", "ポイント2", "ポイント3"]
 }`
 
@@ -216,7 +201,7 @@ ${extractionGuide}
       model: 'gpt-4o',
       messages: [{ role: 'user', content: prompt }],
       response_format: { type: 'json_object' },
-      temperature: 0.55,
+      temperature: 0.1, // 低温度設定：事実に基づく正確な出力を優先
     })
 
     const content = response.choices[0].message.content
