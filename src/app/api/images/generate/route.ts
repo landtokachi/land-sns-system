@@ -4,104 +4,173 @@ import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { generateSvgTemplate, type ImageTextData } from '@/lib/image/templates'
 import sharp from 'sharp'
 
-// タイムアウトは短くてOK（ジョブ開始だけで返すため）
-export const maxDuration = 10
+export const maxDuration = 60
 
 const adminClient = createSupabaseClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-// カテゴリ・タイトルからプロンプト生成
-function buildPrompt(title: string, category: string, variant: number): string {
+// ─── Canvaアクセストークン取得（リフレッシュ対応） ──────────────────
+async function getCanvaToken(): Promise<string | null> {
+  const accessToken = process.env.CANVA_ACCESS_TOKEN
+  if (accessToken) return accessToken
+
+  // リフレッシュトークンで新しいアクセストークンを取得
+  const refreshToken = process.env.CANVA_REFRESH_TOKEN
+  const clientId = process.env.CANVA_CLIENT_ID
+  const clientSecret = process.env.CANVA_CLIENT_SECRET
+  if (!refreshToken || !clientId || !clientSecret) return null
+
+  try {
+    const res = await fetch('https://api.canva.com/rest/v1/oauth/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Authorization': `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`,
+      },
+      body: new URLSearchParams({
+        grant_type: 'refresh_token',
+        refresh_token: refreshToken,
+      }).toString(),
+    })
+    if (!res.ok) return null
+    const data = await res.json()
+    return data.access_token || null
+  } catch {
+    return null
+  }
+}
+
+// ─── CanvaでInstagram投稿デザインを生成 ─────────────────────────────
+async function generateWithCanva(
+  title: string,
+  category: string,
+  variant: number
+): Promise<{ designId: string; thumbnailUrl: string } | null> {
+  const token = await getCanvaToken()
+  if (!token) { console.warn('[Canva] No token'); return null }
+
+  // スタイル指示をバリアントで変える
   const styles = [
-    'vibrant colors, bold graphic design, orange and yellow tones, energetic',
-    'clean white minimal, elegant typography, light blue accents',
-    'dark premium, gold accents, luxury professional',
-    'colorful gradient, trendy, Instagram-worthy, modern',
-    'natural earthy, warm tones, organic feel',
+    'bright vibrant colors, bold, energetic, orange and yellow',
+    'clean minimal white, elegant, professional, light blue',
+    'dark premium, gold accents, luxury',
+    'colorful gradient, trendy, Instagram-worthy',
+    'natural warm tones, earthy, organic',
   ]
   const style = styles[variant % 5]
 
-  let subject = 'Japanese business professional setting, office documents'
-  if (title.includes('農業') || title.includes('農') || title.includes('食')) subject = 'Hokkaido agricultural landscape, green fields, farm'
-  else if (title.includes('IT') || title.includes('DX') || title.includes('デジタル')) subject = 'modern technology, laptop, digital workspace, blue tones'
-  else if (title.includes('起業') || title.includes('創業') || title.includes('スタートアップ')) subject = 'startup coworking space, young entrepreneurs, modern office'
-  else if (title.includes('観光') || title.includes('旅行')) subject = 'beautiful Hokkaido scenery, tourism landscape'
-  else if (title.includes('セミナー') || title.includes('イベント')) subject = 'business conference hall, professional seminar, presentation'
-  else if (title.includes('補助金') || title.includes('助成')) subject = 'Japanese business handshake, money coins, professional documents'
-  else if (title.includes('地域') || title.includes('まちづくり')) subject = 'Obihiro Japan local community, town street'
-  else if (category.includes('事業者')) subject = 'Japanese entrepreneur at work, small business shop'
+  // カテゴリ別の説明
+  let theme = 'Japanese business professional'
+  if (category.includes('補助金') || category.includes('助成')) theme = 'money and business support, documents, handshake, Hokkaido Japan'
+  else if (category.includes('イベント') || category.includes('セミナー')) theme = 'business conference, seminar stage, people gathering, professional event'
+  else if (category.includes('LAND') || category.includes('とかち財団')) theme = 'startup coworking space, Obihiro Hokkaido, entrepreneurs, community'
+  else if (category.includes('事業者')) theme = 'Japanese small business, entrepreneur, shop, craftsmanship'
 
-  return `Instagram post background, ${subject}, ${style}, cinematic lighting, high quality, no text, no letters, no watermark, square format, SNS ready`
-}
-
-// Replicateでジョブ開始（完了を待たない）
-async function startReplicate(prompt: string): Promise<string | null> {
-  const token = process.env.REPLICATE_API_TOKEN
-  if (!token) return null
+  const query = `Japanese SNS Instagram post for "${title}". Theme: ${theme}. Style: ${style}. Include bold Japanese text area. Professional design for social media. No English text in design.`
 
   try {
-    const res = await fetch('https://api.replicate.com/v1/models/black-forest-labs/flux-schnell/predictions', {
+    const res = await fetch('https://api.canva.com/rest/v1/designs', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        input: {
-          prompt,
-          aspect_ratio: '1:1',
-          num_outputs: 1,
-          output_format: 'jpg',
-          output_quality: 90,
-          num_inference_steps: 4,
-        },
+        design_type: { type: 'preset', name: 'InstagramPost' },
+        title: title.slice(0, 50),
       }),
-      signal: AbortSignal.timeout(8000),
+      signal: AbortSignal.timeout(15000),
     })
+
     if (!res.ok) {
-      console.error('[Replicate] Start error:', await res.text())
+      const err = await res.text()
+      console.error('[Canva] Create design error:', err)
       return null
     }
+
     const data = await res.json()
-    console.log('[Replicate] Job started:', data.id, 'status:', data.status)
-    return data.id || null
+    const designId = data.design?.id
+    if (!designId) return null
+
+    console.log('[Canva] Design created:', designId)
+    return { designId, thumbnailUrl: data.design?.thumbnail?.url || '' }
   } catch (e) {
-    console.error('[Replicate] Start failed:', e)
+    console.error('[Canva] Error:', e)
     return null
   }
 }
 
-// SVGフォールバック（Replicateが使えない場合）
-async function generateSvgPng(imageData: ImageTextData, candidateId: string, variant: number, timestamp: number) {
+// ─── CanvaデザインをPNGでエクスポート ───────────────────────────────
+async function exportCanvaDesign(designId: string): Promise<string | null> {
+  const token = await getCanvaToken()
+  if (!token) return null
+
+  try {
+    // エクスポートジョブを開始
+    const res = await fetch(`https://api.canva.com/rest/v1/designs/${designId}/exports`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ format: { type: 'png' } }),
+      signal: AbortSignal.timeout(10000),
+    })
+
+    if (!res.ok) {
+      console.error('[Canva] Export error:', await res.text())
+      return null
+    }
+
+    const data = await res.json()
+    const exportId = data.job?.id
+    if (!exportId) return null
+
+    // エクスポート完了まで待機（ポーリング）
+    for (let i = 0; i < 15; i++) {
+      await new Promise(r => setTimeout(r, 2000))
+      const statusRes = await fetch(`https://api.canva.com/rest/v1/designs/${designId}/exports/${exportId}`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+        signal: AbortSignal.timeout(5000),
+      })
+      if (!statusRes.ok) continue
+      const statusData = await statusRes.json()
+      if (statusData.job?.status === 'success') {
+        return statusData.job?.urls?.[0] || null
+      }
+      if (statusData.job?.status === 'failed') return null
+    }
+    return null
+  } catch (e) {
+    console.error('[Canva] Export error:', e)
+    return null
+  }
+}
+
+// ─── SVGフォールバック ───────────────────────────────────────────────
+async function generateSvgFallback(
+  imageData: ImageTextData, candidateId: string, variant: number, timestamp: number
+): Promise<string> {
   const svg = generateSvgTemplate({ ...imageData, design_variant: variant })
   const pngBuffer = await sharp(Buffer.from(svg)).resize(1080, 1080).png().toBuffer()
   const fileName = `${candidateId}/v${variant}_${timestamp}.png`
-  const { error } = await adminClient.storage
-    .from('generated-images')
+  await adminClient.storage.from('generated-images')
     .upload(fileName, pngBuffer, { contentType: 'image/png', upsert: true })
-  if (error) throw error
   const { data } = adminClient.storage.from('generated-images').getPublicUrl(fileName)
   return data.publicUrl
 }
 
-// テキストオーバーレイSVG
-function buildOverlay(data: ImageTextData): string {
-  const lines = wrapJa(data.title, 9)
+// ─── テキストオーバーレイSVG ─────────────────────────────────────────
+function buildOverlay(title: string): string {
+  const lines = wrapJa(title, 9)
   const n = lines.length
   const fs = n <= 2 ? 110 : n === 3 ? 94 : 80
   const lh = fs * 1.24
   const startY = Math.round(540 - (n * lh) / 2 + fs * 0.16)
-
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1080" width="1080" height="1080">
 <defs>
-  <linearGradient id="top" x1="0" y1="0" x2="0" y2="1">
-    <stop offset="0%" stop-color="rgba(0,0,0,0.40)"/><stop offset="100%" stop-color="rgba(0,0,0,0)"/>
-  </linearGradient>
-  <linearGradient id="bot" x1="0" y1="0" x2="0" y2="1">
-    <stop offset="0%" stop-color="rgba(0,0,0,0)"/><stop offset="100%" stop-color="rgba(0,0,0,0.75)"/>
-  </linearGradient>
   <linearGradient id="mid" x1="0" y1="0" x2="0" y2="1">
     <stop offset="0%" stop-color="rgba(0,0,0,0)"/>
     <stop offset="30%" stop-color="rgba(0,0,0,0.55)"/>
@@ -109,15 +178,18 @@ function buildOverlay(data: ImageTextData): string {
     <stop offset="70%" stop-color="rgba(0,0,0,0.55)"/>
     <stop offset="100%" stop-color="rgba(0,0,0,0)"/>
   </linearGradient>
+  <linearGradient id="bot" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%" stop-color="rgba(0,0,0,0)"/>
+    <stop offset="100%" stop-color="rgba(0,0,0,0.70)"/>
+  </linearGradient>
   <filter id="ts">
     <feDropShadow dx="0" dy="3" stdDeviation="10" flood-color="rgba(0,0,0,1)"/>
     <feDropShadow dx="0" dy="0" stdDeviation="22" flood-color="rgba(0,0,0,0.7)"/>
   </filter>
   <filter id="bs"><feDropShadow dx="0" dy="1" stdDeviation="5" flood-color="rgba(0,0,0,0.9)"/></filter>
 </defs>
-<rect width="1080" height="320" fill="url(#top)"/>
-<rect x="0" y="720" width="1080" height="360" fill="url(#bot)"/>
 <rect width="1080" height="${n * lh + fs * 1.4}" y="${startY - fs * 0.85}" fill="url(#mid)"/>
+<rect x="0" y="720" width="1080" height="360" fill="url(#bot)"/>
 ${lines.map((l, i) => `<text x="540" y="${startY + i * lh}"
   font-family="'Noto Sans JP','Hiragino Kaku Gothic ProN','Yu Gothic Bold',sans-serif"
   font-size="${fs}" font-weight="900" fill="white" text-anchor="middle" letter-spacing="3"
@@ -139,6 +211,7 @@ function esc(s: string) {
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
 }
 
+// ─── メインハンドラー ─────────────────────────────────────────────────
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -166,54 +239,92 @@ export async function POST(request: NextRequest) {
       else if (f.includes('違う') || f.includes('別') || f.includes('変え')) targets = variants.map(v => (v + 1) % 5)
     }
 
-    // Replicateのジョブを3つ起動（完了を待たない）
-    const jobs: Array<{ variant: number; predictionId: string | null; svgFallback: string }> = []
+    // Canvaでデザイン生成（3種類）
+    const canvaToken = await getCanvaToken()
+    const useCanva = !!canvaToken
+
+    const generatedImages: Array<{ variant: number; png_url: string; canva_design_id?: string; is_canva: boolean }> = []
 
     for (const variant of targets) {
-      const prompt = buildPrompt(title, category, variant)
-      const predictionId = await startReplicate(prompt)
-      // SVGフォールバックも事前生成しておく
-      const svgFallbackUrl = await generateSvgPng(
-        { ...image_data, template_type, design_variant: variant },
-        candidate_id, variant, timestamp
-      )
-      jobs.push({ variant, predictionId, svgFallback: svgFallbackUrl })
+      try {
+        if (useCanva) {
+          // Canvaでデザイン作成
+          const canvaResult = await generateWithCanva(title, category, variant)
+          if (canvaResult) {
+            // Canvaデザインの画像URLを取得（サムネイル使用）
+            const bgUrl = canvaResult.thumbnailUrl
+
+            // テキストオーバーレイを合成
+            const overlay = buildOverlay(title)
+
+            let pngBuffer: Buffer
+            if (bgUrl) {
+              const photoRes = await fetch(bgUrl, { signal: AbortSignal.timeout(8000) })
+              if (photoRes.ok) {
+                const photoBuf = Buffer.from(await photoRes.arrayBuffer())
+                pngBuffer = await sharp(photoBuf)
+                  .resize(1080, 1080, { fit: 'cover', position: 'center' })
+                  .composite([{ input: Buffer.from(overlay), blend: 'over' }])
+                  .png().toBuffer()
+              } else {
+                pngBuffer = await sharp(Buffer.from(generateSvgTemplate({ ...image_data, template_type, design_variant: variant })))
+                  .resize(1080, 1080).png().toBuffer()
+              }
+            } else {
+              pngBuffer = await sharp(Buffer.from(generateSvgTemplate({ ...image_data, template_type, design_variant: variant })))
+                .resize(1080, 1080).png().toBuffer()
+            }
+
+            const fileName = `${candidate_id}/canva_v${variant}_${timestamp}.png`
+            const { error } = await adminClient.storage.from('generated-images')
+              .upload(fileName, pngBuffer, { contentType: 'image/png', upsert: true })
+            if (!error) {
+              const { data } = adminClient.storage.from('generated-images').getPublicUrl(fileName)
+              generatedImages.push({
+                variant,
+                png_url: data.publicUrl,
+                canva_design_id: canvaResult.designId,
+                is_canva: true,
+              })
+              continue
+            }
+          }
+        }
+        // フォールバック: SVG
+        const svgUrl = await generateSvgFallback({ ...image_data, template_type }, candidate_id, variant, timestamp)
+        generatedImages.push({ variant, png_url: svgUrl, is_canva: false })
+      } catch (e) {
+        console.error(`[Gen v${variant}] Error:`, e)
+        const svgUrl = await generateSvgFallback({ ...image_data, template_type }, candidate_id, variant, timestamp)
+        generatedImages.push({ variant, png_url: svgUrl, is_canva: false })
+      }
     }
 
-    // DBに仮保存（最初のSVGフォールバックをメインに）
-    const main = jobs[0]
+    if (!generatedImages.length) return NextResponse.json({ error: '生成失敗' }, { status: 500 })
+
+    const main = generatedImages[0]
     const { data: rec } = await supabase.from('generated_images').insert({
-      post_candidate_id: candidate_id,
-      template_type,
-      image_size: '1080x1080',
-      image_url: main.svgFallback,
-      png_url: main.svgFallback,
+      post_candidate_id: candidate_id, template_type,
+      image_size: '1080x1080', image_url: main.png_url, png_url: main.png_url,
       image_text_json: {
         ...image_data,
-        jobs: jobs.map(j => ({
-          variant: j.variant,
-          predictionId: j.predictionId,
-          svgFallback: j.svgFallback,
-          timestamp,
-          candidateId: candidate_id,
-        })),
+        generated: generatedImages.map(g => ({ variant: g.variant, url: g.png_url, canva: g.is_canva })),
       },
     }).select().single()
 
     await supabase.from('post_candidates').update({ status: 'image_created' }).eq('id', candidate_id)
 
-    // フロントにジョブ情報を返す（ポーリング用）
     return NextResponse.json({
       success: true,
-      jobs: jobs.map(j => ({
-        variant: j.variant,
-        predictionId: j.predictionId,
-        svgFallback: j.svgFallback,
-        timestamp,
-        candidateId: candidate_id,
+      images: generatedImages.map(g => ({
+        variant: g.variant,
+        png_url: g.png_url,
+        canva_design_id: g.canva_design_id,
+        is_canva: g.is_canva,
       })),
       image_id: rec?.id,
-      using_ai: jobs.some(j => j.predictionId !== null),
+      using_canva: useCanva,
+      count: generatedImages.length,
     })
 
   } catch (e) {

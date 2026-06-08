@@ -256,7 +256,7 @@ export function ImageGenerator({ candidate, initialImages, socialPost }: Props) 
                     <span className="text-xs text-slate-400 ml-2">{VARIANT_DESC[item.variant]}</span>
                   </div>
                   {item.is_ai
-                    ? <span className="text-xs font-semibold text-indigo-600">✨ AI写真</span>
+                    ? <span className="text-xs font-semibold" style={{color:'#7c3aed'}}>✨ Canva生成</span>
                     : polling && jobs.find(j => j.variant === item.variant)?.predictionId
                     ? <span className="text-xs text-amber-500">⏳ 生成中...</span>
                     : null
