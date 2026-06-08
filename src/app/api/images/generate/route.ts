@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { generateSvgTemplate, type ImageTextData } from '@/lib/image/templates'
 import sharp from 'sharp'
+import Replicate from 'replicate'
 
 export const maxDuration = 60
 
@@ -46,24 +47,20 @@ function buildReplicatePrompt(title: string, category: string, variant: number):
   return `Instagram post background image for Japanese SNS, ${bgConcept}, ${styleGuide}, cinematic lighting, high quality photography or illustration, NO TEXT in the image, no letters, no words, 1:1 square format, professional SNS post background`
 }
 
-// ─── Replicate API で画像生成 ─────────────────────────────────────
+// ─── Replicate API で画像生成（公式SDKを使用） ─────────────────────
 async function generateWithReplicate(prompt: string): Promise<string | null> {
-  const token = process.env.REPLICATE_API_TOKEN
-  if (!token) {
+  if (!process.env.REPLICATE_API_TOKEN) {
     console.warn('[Replicate] API token not set')
     return null
   }
 
   try {
-    // flux-schnell: 高速・高品質
-    const res = await fetch('https://api.replicate.com/v1/models/black-forest-labs/flux-schnell/predictions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        'Prefer': 'wait',  // 完了まで待つ（最大60秒）
-      },
-      body: JSON.stringify({
+    const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN })
+    console.log('[Replicate] Running flux-schnell...')
+
+    const output = await replicate.run(
+      'black-forest-labs/flux-schnell',
+      {
         input: {
           prompt,
           aspect_ratio: '1:1',
@@ -72,31 +69,22 @@ async function generateWithReplicate(prompt: string): Promise<string | null> {
           output_quality: 90,
           num_inference_steps: 4,
         },
-      }),
-      signal: AbortSignal.timeout(50000),
-    })
+      }
+    )
 
-    if (!res.ok) {
-      const err = await res.text()
-      console.error('[Replicate] API error:', err)
-      return null
-    }
+    console.log('[Replicate] Output:', JSON.stringify(output).slice(0, 200))
 
-    const data = await res.json()
-    console.log('[Replicate] Response status:', data.status)
-
-    // outputが配列の場合
-    if (data.output && Array.isArray(data.output) && data.output[0]) {
-      return data.output[0]
-    }
-    // outputが文字列の場合
-    if (data.output && typeof data.output === 'string') {
-      return data.output
-    }
-
-    // statusがprocessingの場合はポーリング
-    if (data.id && data.status !== 'succeeded') {
-      return await pollPrediction(data.id, token)
+    if (Array.isArray(output) && output[0]) {
+      // ReadableStream or URL string
+      const first = output[0]
+      if (typeof first === 'string') return first
+      // FileOutput / ReadableStream → URLを取得
+      if (first && typeof (first as { url?: () => Promise<URL> }).url === 'function') {
+        const url = await (first as { url: () => Promise<URL> }).url()
+        return url.toString()
+      }
+      // toString()が使える場合
+      return String(first)
     }
 
     return null
@@ -104,28 +92,6 @@ async function generateWithReplicate(prompt: string): Promise<string | null> {
     console.error('[Replicate] Generate error:', err)
     return null
   }
-}
-
-// ポーリングで結果を待つ
-async function pollPrediction(predictionId: string, token: string): Promise<string | null> {
-  for (let i = 0; i < 20; i++) {
-    await new Promise(r => setTimeout(r, 2000))
-    try {
-      const res = await fetch(`https://api.replicate.com/v1/predictions/${predictionId}`, {
-        headers: { 'Authorization': `Bearer ${token}` },
-      })
-      const data = await res.json()
-      if (data.status === 'succeeded') {
-        const out = data.output
-        if (Array.isArray(out)) return out[0]
-        if (typeof out === 'string') return out
-      }
-      if (data.status === 'failed') return null
-    } catch {
-      // 続行
-    }
-  }
-  return null
 }
 
 // ─── 1枚生成（Replicate + テキストオーバーレイ） ──────────────────
