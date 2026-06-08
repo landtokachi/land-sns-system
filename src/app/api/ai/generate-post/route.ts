@@ -3,32 +3,23 @@ import { createClient } from '@/lib/supabase/server'
 import { generateSocialPosts } from '@/lib/ai/generate-post'
 import type { Platform } from '@/types'
 
-// HTMLからテキストを抽出
 function extractText(html: string): string {
   let text = html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
   text = text.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
   text = text.replace(/<[^>]+>/g, ' ')
   text = text.replace(/\s+/g, ' ').trim()
-  return text.slice(0, 5000) // 多めに取得
+  return text.slice(0, 5000)
 }
 
-// 情報源URLを再取得して最新のテキストを得る
 async function refetchSourceText(url: string): Promise<string | null> {
   try {
     const res = await fetch(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; LANDBot/1.0)',
-        'Accept': 'text/html,application/xhtml+xml',
-        'Accept-Language': 'ja,en',
-      },
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; LANDBot/1.0)', 'Accept': 'text/html,application/xhtml+xml', 'Accept-Language': 'ja,en' },
       signal: AbortSignal.timeout(10000),
     })
     if (!res.ok) return null
-    const html = await res.text()
-    return extractText(html)
-  } catch {
-    return null
-  }
+    return extractText(await res.text())
+  } catch { return null }
 }
 
 export async function POST(request: NextRequest) {
@@ -40,31 +31,27 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { candidate_id, candidate } = body
 
-    // 情報源URLを再取得して最新テキストを上書き
+    // 情報源URLを再取得して最新テキストで上書き
     let freshCandidate = { ...candidate }
     const sourceUrl = candidate.source_url || candidate.application_url
     if (sourceUrl) {
-      console.log('[GeneratePost] Re-fetching source URL:', sourceUrl)
       const freshText = await refetchSourceText(sourceUrl)
-      if (freshText && freshText.length > 200) {
-        freshCandidate = {
-          ...freshCandidate,
-          raw_text: freshText, // 最新テキストで上書き
-        }
-        console.log('[GeneratePost] Fresh text fetched:', freshText.length, 'chars')
-      }
+      if (freshText && freshText.length > 200) freshCandidate = { ...freshCandidate, raw_text: freshText }
     }
 
     const result = await generateSocialPosts(freshCandidate)
 
     if (candidate_id) {
+      // Instagram + Facebook は同じ文章（Meta Business Suite経由で一括投稿するため）
+      const platformTexts: Record<Platform, string> = {
+        instagram: result.instagram_caption,
+        facebook: result.instagram_caption, // FacebookもInstagramと同じ文章
+        x: result.x_text,
+      }
+
       const platforms: Platform[] = ['instagram', 'facebook', 'x']
       for (const platform of platforms) {
-        const postText =
-          platform === 'instagram' ? result.instagram_caption
-          : platform === 'facebook' ? result.facebook_text
-          : result.x_text
-
+        const postText = platformTexts[platform]
         const { data: existing } = await supabase
           .from('social_posts')
           .select('id')
