@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
   const year = searchParams.get('year') || new Date().getFullYear().toString()
   const month = searchParams.get('month') || (new Date().getMonth() + 1).toString()
 
-  const startDate = `${year}-${month.padStart(2, '0')}-01`
+  const startDate = `${year}-${month.padStart(2, '0')}-01T00:00:00`
   const endDate = new Date(parseInt(year), parseInt(month), 0)
   const endDateStr = `${year}-${month.padStart(2, '0')}-${endDate.getDate().toString().padStart(2, '0')}`
 
@@ -37,19 +37,43 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { post_candidate_id, platform, scheduled_at, post_text, hashtags } = body
 
-    // social_postsに挿入（既存があればupsert）
-    const { data, error } = await supabase
+    // 既存レコードを確認（unique制約なしでも動作するよう手動upsert）
+    const { data: existing } = await supabase
       .from('social_posts')
-      .upsert({
-        post_candidate_id,
-        platform,
-        scheduled_at,
-        post_text: post_text || null,
-        hashtags: hashtags || null,
-        status: 'scheduled',
-      }, { onConflict: 'post_candidate_id,platform' })
-      .select()
-      .single()
+      .select('id')
+      .eq('post_candidate_id', post_candidate_id)
+      .eq('platform', platform)
+      .maybeSingle()
+
+    let data, error
+    if (existing) {
+      // 既存レコードを更新
+      ;({ data, error } = await supabase
+        .from('social_posts')
+        .update({
+          scheduled_at,
+          post_text: post_text || null,
+          hashtags: hashtags || null,
+          status: 'scheduled',
+        })
+        .eq('id', existing.id)
+        .select()
+        .single())
+    } else {
+      // 新規挿入
+      ;({ data, error } = await supabase
+        .from('social_posts')
+        .insert({
+          post_candidate_id,
+          platform,
+          scheduled_at,
+          post_text: post_text || null,
+          hashtags: hashtags || null,
+          status: 'scheduled',
+        })
+        .select()
+        .single())
+    }
 
     if (error) throw error
     return NextResponse.json(data)
