@@ -93,7 +93,19 @@ export default async function CandidatesPage({
   if (params.q) query = query.ilike('title', `%${params.q}%`)
 
   const { data: candidates } = await query
-  const list = (candidates as PostCandidate[] | null) ?? []
+
+  // 優先度を high→medium→low の順でソート（テキストフィールドなので手動ソート）
+  const PRIORITY_ORDER: Record<string, number> = { high: 0, medium: 1, low: 2 }
+  const list = ((candidates as PostCandidate[] | null) ?? []).sort((a, b) => {
+    const pa = PRIORITY_ORDER[a.priority] ?? 1
+    const pb = PRIORITY_ORDER[b.priority] ?? 1
+    if (pa !== pb) return pa - pb
+    // 同じ優先度なら締切が近い順
+    if (a.deadline && b.deadline) return new Date(a.deadline).getTime() - new Date(b.deadline).getTime()
+    if (a.deadline) return -1
+    if (b.deadline) return 1
+    return 0
+  })
   const total = list.length
   const highCount = list.filter(c => c.priority === 'high').length
   const reviewCount = list.filter(c => c.review_status === 'requesting').length
