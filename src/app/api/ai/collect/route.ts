@@ -111,55 +111,44 @@ function pickDetailLinks(html: string, baseUrl: string, max = 2): string[] {
   return scored.slice(0, max).map((s) => s.url)
 }
 
-export async function POST(request: NextRequest) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+type SourceDef = { name: string; url: string; category?: string }
+type CollectResult = {
+  source_name: string
+  url: string
+  status: string
+  candidates?: Array<Record<string, unknown>>
+  error?: string
+}
 
-  const { sources } = await request.json().catch(() => ({ sources: null }))
-  const targetSources = sources || COLLECTION_SOURCES
+// 1つの情報源を処理（取得→リンク先追跡→AI抽出）。例外は投げずに結果オブジェクトを返す
+async function processSource(source: SourceDef): Promise<CollectResult> {
+  try {
+    const html = await fetchPageHtml(source.url, 8000)
+    if (!html) {
+      return { source_name: source.name, url: source.url, status: 'fetch_failed', error: 'ページを取得できませんでした' }
+    }
+    let pageText = extractTextFromHtml(html)
+    if (!pageText || pageText.length < 100) {
+      return { source_name: source.name, url: source.url, status: 'fetch_failed', error: '本文が取得できませんでした' }
+    }
 
-  const results: Array<{
-    source_name: string
-    url: string
-    status: string
-    candidates?: Array<Record<string, unknown>>
-    error?: string
-  }> = []
+    // ★リンク先追跡：詳細ページを最大2件たどって本文を補強（並列取得）
+    const detailUrls = pickDetailLinks(html, source.url, 2)
+    const detailTexts = await Promise.all(detailUrls.map(async (durl) => {
+      const dhtml = await fetchPageHtml(durl, 5000)
+      if (!dhtml) return ''
+      const dtext = extractTextFromHtml(dhtml)
+      return (dtext && dtext.length > 200) ? `\n\n----- 関連詳細ページ（${durl}） -----\n${dtext}` : ''
+    }))
+    pageText = (pageText + detailTexts.join('')).slice(0, 12000)
 
-  for (const source of targetSources) {
-    try {
-      const html = await fetchPageHtml(source.url)
-      if (!html) {
-        results.push({ source_name: source.name, url: source.url, status: 'fetch_failed', error: 'ページを取得できませんでした' })
-        continue
-      }
-      let pageText = extractTextFromHtml(html)
-      if (!pageText || pageText.length < 100) {
-        results.push({ source_name: source.name, url: source.url, status: 'fetch_failed', error: '本文が取得できませんでした' })
-        continue
-      }
-
-      // ★リンク先追跡：詳細ページを最大2件たどって本文を補強する
-      const detailUrls = pickDetailLinks(html, source.url, 2)
-      for (const durl of detailUrls) {
-        const dhtml = await fetchPageHtml(durl, 6000)
-        if (dhtml) {
-          const dtext = extractTextFromHtml(dhtml)
-          if (dtext && dtext.length > 200) {
-            pageText += `\n\n----- 関連詳細ページ（${durl}） -----\n${dtext}`
-          }
-        }
-      }
-      pageText = pageText.slice(0, 12000)
-
-      // AIで投稿候補になりそうな情報を抽出
-      const today = new Date().toISOString().slice(0, 10) // YYYY-MM-DD
-      const response = await openai.chat.completions.create({
-        model: 'gpt-4o-mini',
-        messages: [{
-          role: 'user',
-          content: `あなたはスタートアップ支援施設「LAND」（公益財団法人とかち財団運営、北海道十勝・帯広）のSNS担当アシスタントです。
+    // AIで投稿候補になりそうな情報を抽出
+    const today = new Date().toISOString().slice(0, 10) // YYYY-MM-DD
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [{
+        role: 'user',
+        content: `あなたはスタートアップ支援施設「LAND」（公益財団法人とかち財団運営、北海道十勝・帯広）のSNS担当アシスタントです。
 
 本日の日付: ${today}
 
@@ -215,32 +204,37 @@ ${pageText}
 
 最新の有効な情報が見つからない場合は candidates を空配列にしてください。
 古い情報・終了した情報は絶対に含めないでください。`
-        }],
-        response_format: { type: 'json_object' },
-        temperature: 0.2,
-      })
+      }],
+      response_format: { type: 'json_object' },
+      temperature: 0.2,
+    })
 
-      const content = response.choices[0].message.content
-      if (!content) continue
-
-      const parsed = JSON.parse(content)
-      const candidates = parsed.candidates || []
-
-      results.push({
-        source_name: source.name,
-        url: source.url,
-        status: 'success',
-        candidates,
-      })
-    } catch (error) {
-      results.push({
-        source_name: source.name,
-        url: source.url,
-        status: 'error',
-        error: String(error),
-      })
+    const content = response.choices[0].message.content
+    if (!content) {
+      return { source_name: source.name, url: source.url, status: 'success', candidates: [] }
     }
+    const parsed = JSON.parse(content)
+    return {
+      source_name: source.name,
+      url: source.url,
+      status: 'success',
+      candidates: parsed.candidates || [],
+    }
+  } catch (error) {
+    return { source_name: source.name, url: source.url, status: 'error', error: String(error) }
   }
+}
+
+export async function POST(request: NextRequest) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { sources } = await request.json().catch(() => ({ sources: null }))
+  const targetSources: SourceDef[] = sources || COLLECTION_SOURCES
+
+  // ★全ソースを並列処理（直列だとサイト数×取得時間でタイムアウトするため）
+  const results: CollectResult[] = await Promise.all(targetSources.map((s) => processSource(s)))
 
   // 収集した候補をDBに保存（ステータス: unconfirmed）
   const allCandidates = results.flatMap((r) =>
