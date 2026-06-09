@@ -38,7 +38,10 @@ export async function POST(request: NextRequest) {
       const freshText = await refetchSourceText(sourceUrl)
       if (freshText && freshText.length > 200) freshCandidate = { ...freshCandidate, raw_text: freshText }
     }
-
+// 保存済みの本文（本文・メモ）があれば、再取得した薄いテキストより優先して使う
+    if (candidate.raw_text && String(candidate.raw_text).trim().length > 200) {
+      freshCandidate = { ...freshCandidate, raw_text: candidate.raw_text }
+    }
     const result = await generateSocialPosts(freshCandidate)
 
     if (candidate_id) {
