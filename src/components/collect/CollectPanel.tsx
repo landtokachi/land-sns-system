@@ -52,6 +52,7 @@ export function CollectPanel() {
   const [result, setResult] = useState<CollectResult | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [selectMode, setSelectMode] = useState<'all' | 'select'>('all')
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
 
   const loadSources = useCallback(async () => {
     setLoadingSources(true)
@@ -89,22 +90,43 @@ export function CollectPanel() {
 
     setLoading(true)
     setResult(null)
+
+    // ★サイトを5件ずつに分割して順番に収集（1回のリクエストを軽くしてタイムアウトを防ぐ）
+    const CHUNK = 5
+    const allResults: SourceResult[] = []
+    let savedTotal = 0
+    let foundTotal = 0
+    setProgress({ done: 0, total: targetSources.length })
     try {
-      const res = await fetch('/api/ai/collect', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sources: targetSources.map(s => ({ name: s.name, url: s.url, category: s.category })),
-        }),
-      })
-      const data = await res.json()
-      setResult(data)
+      for (let i = 0; i < targetSources.length; i += CHUNK) {
+        const chunk = targetSources.slice(i, i + CHUNK)
+        try {
+          const res = await fetch('/api/ai/collect', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              sources: chunk.map(s => ({ name: s.name, url: s.url, category: s.category })),
+            }),
+          })
+          if (res.ok) {
+            const data: CollectResult = await res.json()
+            allResults.push(...(data.results || []))
+            savedTotal += data.saved_count || 0
+            foundTotal += data.candidates_found || 0
+          } else {
+            chunk.forEach(s => allResults.push({ source_name: s.name, url: s.url, status: 'error', error: 'サーバーエラー' }))
+          }
+        } catch {
+          chunk.forEach(s => allResults.push({ source_name: s.name, url: s.url, status: 'error', error: '通信エラー（時間切れの可能性）' }))
+        }
+        setProgress({ done: Math.min(i + CHUNK, targetSources.length), total: targetSources.length })
+        setResult({ sources_checked: allResults.length, candidates_found: foundTotal, saved_count: savedTotal, results: allResults })
+      }
       // 完了後にソース一覧をリロード（最終確認日更新）
       await loadSources()
-    } catch {
-      alert('収集中にエラーが発生しました')
     } finally {
       setLoading(false)
+      setProgress(null)
     }
   }
 
@@ -209,8 +231,8 @@ export function CollectPanel() {
           <div className="flex items-center gap-3">
             <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600" />
             <div>
-              <p className="text-sm font-medium text-blue-700">情報を収集中です...</p>
-              <p className="text-xs text-blue-500 mt-1">各サイトを確認してAIが内容を分析中です。1〜2分かかる場合があります。</p>
+              <p className="text-sm font-medium text-blue-700">情報を収集中です...{progress ? `（${progress.done}/${progress.total}サイト）` : ''}</p>
+              <p className="text-xs text-blue-500 mt-1">5サイトずつ順番に確認しています。サイト数が多いと数分かかる場合があります。</p>
             </div>
           </div>
         </div>
