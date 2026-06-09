@@ -606,46 +606,15 @@ export default function ScheduleCalendar() {
                 </div>
               )}
 
-              {/* プラットフォーム */}
+              {/* 投稿予定日 */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">プラットフォーム</label>
-                <div className="grid grid-cols-4 gap-2">
-                  {(Object.entries(PLATFORM_CONFIG) as [Platform, typeof PLATFORM_CONFIG[Platform]][]).map(([key, cfg]) => (
-                    <button
-                      key={key}
-                      onClick={() => setAddForm(f => ({ ...f, platform: key }))}
-                      className={`py-2 rounded-lg text-xs font-medium border transition-all ${
-                        addForm.platform === key
-                          ? `${cfg.bg} ${cfg.color} border-current shadow-sm`
-                          : 'border-gray-200 text-gray-500 hover:bg-gray-50'
-                      }`}
-                    >
-                      {cfg.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* 日付・時刻 */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">投稿予定日 <span className="text-red-500">*</span></label>
-                  <input
-                    type="date"
-                    value={addForm.scheduled_date}
-                    onChange={e => setAddForm(f => ({ ...f, scheduled_date: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-300"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">投稿時刻</label>
-                  <input
-                    type="time"
-                    value={addForm.scheduled_time}
-                    onChange={e => setAddForm(f => ({ ...f, scheduled_time: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-300"
-                  />
-                </div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">投稿予定日 <span className="text-red-500">*</span></label>
+                <input
+                  type="date"
+                  value={addForm.scheduled_date}
+                  onChange={e => setAddForm(f => ({ ...f, scheduled_date: e.target.value }))}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-sky-300"
+                />
               </div>
             </div>
             <div className="px-6 py-4 border-t border-gray-100 flex gap-3">

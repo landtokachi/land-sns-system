@@ -58,21 +58,21 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         isOpen === false ? '-translate-x-full' : 'translate-x-0',
       )}
       style={{
-        background: 'linear-gradient(185deg, #1e1b4b 0%, #312e81 48%, #4c1d95 100%)',
+        background: 'linear-gradient(185deg, #0b1220 0%, #0f1e3d 55%, #0a2e3a 100%)',
         borderRight: '1px solid rgba(255,255,255,0.06)',
-        boxShadow: '2px 0 28px rgba(30,27,75,0.35)',
+        boxShadow: '2px 0 28px rgba(8,15,30,0.45)',
       }}
     >
       {/* Logo */}
       <div className="px-4 h-14 flex items-center gap-3 flex-shrink-0"
         style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
         <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-          style={{ background: 'linear-gradient(135deg, #818cf8, #c084fc)', boxShadow: '0 4px 14px rgba(168,85,247,0.55)' }}>
+          style={{ background: 'linear-gradient(135deg, #2563eb, #06b6d4)', boxShadow: '0 4px 16px rgba(6,182,212,0.5)' }}>
           <span className="text-white text-base font-black">L</span>
         </div>
         <div>
           <p className="text-sm font-bold text-white leading-none tracking-wide">LAND</p>
-          <p className="text-[11px] text-indigo-300/80 mt-1">SNS管理</p>
+          <p className="text-[11px] text-sky-300/70 mt-1">SNS管理</p>
         </div>
       </div>
 
@@ -80,7 +80,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       <nav className="flex-1 px-3 py-4 overflow-y-auto space-y-5">
         {navGroups.map(group => (
           <div key={group.label}>
-            <p className="text-[10px] font-semibold text-indigo-300/60 px-2 mb-1.5 uppercase tracking-[0.12em]">{group.label}</p>
+            <p className="text-[10px] font-semibold text-sky-300/50 px-2 mb-1.5 uppercase tracking-[0.12em]">{group.label}</p>
             <div className="space-y-1">
               {group.items.map(item => {
                 const isActive =
@@ -92,16 +92,16 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                       'group relative flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-sm transition-all duration-150',
                       isActive
                         ? 'text-white font-semibold'
-                        : 'text-indigo-100/70 hover:text-white hover:bg-white/10',
+                        : 'text-slate-300 hover:text-white hover:bg-white/10',
                     )}
                     style={isActive ? {
-                      background: 'linear-gradient(135deg, #6366f1, #a855f7)',
-                      boxShadow: '0 6px 18px rgba(124,58,237,0.45)',
+                      background: 'linear-gradient(135deg, #2563eb, #06b6d4)',
+                      boxShadow: '0 6px 18px rgba(6,182,212,0.4)',
                     } : undefined}>
                     {isActive && (
                       <span className="absolute -left-3 top-1/2 -translate-y-1/2 h-5 w-1 rounded-full bg-white/90" />
                     )}
-                    <span className={isActive ? 'text-white' : 'text-indigo-300/80 group-hover:text-white transition-colors'}>
+                    <span className={isActive ? 'text-white' : 'text-sky-300/70 group-hover:text-white transition-colors'}>
                       {item.icon}
                     </span>
                     {item.label}
@@ -118,12 +118,12 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         <div className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl"
           style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.06)' }}>
           <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
-            style={{ background: 'linear-gradient(135deg, #818cf8, #c084fc)', boxShadow: '0 2px 8px rgba(168,85,247,0.5)' }}>
+            style={{ background: 'linear-gradient(135deg, #2563eb, #06b6d4)', boxShadow: '0 2px 8px rgba(6,182,212,0.5)' }}>
             L
           </div>
           <div className="min-w-0">
             <p className="text-xs font-semibold text-white truncate">LAND スタッフ</p>
-            <p className="text-[11px] text-indigo-300/70 truncate">とかち財団</p>
+            <p className="text-[11px] text-sky-300/60 truncate">とかち財団</p>
           </div>
         </div>
       </div>

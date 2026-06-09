@@ -87,12 +87,12 @@ export default async function DashboardPage() {
         {/* Page hero header */}
         <div className="rounded-2xl px-6 py-5 flex items-center justify-between flex-wrap gap-4"
           style={{
-            background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #6d28d9 100%)',
-            boxShadow: '0 4px 20px rgba(79,70,229,0.30)',
+            background: 'linear-gradient(120deg, #0b1220 0%, #14315e 45%, #0e7490 100%)',
+            boxShadow: '0 8px 28px rgba(8,15,30,0.30)',
           }}>
           <div>
             <h2 className="text-lg font-bold text-white">ダッシュボード</h2>
-            <p className="text-sm text-indigo-200 mt-0.5">
+            <p className="text-sm text-sky-200 mt-0.5">
               {format(now, 'yyyy年M月d日（E）', {locale:ja})} 時点
             </p>
           </div>
@@ -103,8 +103,8 @@ export default async function DashboardPage() {
               ✨ AI収集
             </Link>
             <Link href="/candidates/new"
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-bold transition-all hover:bg-indigo-50"
-              style={{ background: 'white', color: '#4f46e5' }}>
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-bold transition-all hover:bg-sky-50"
+              style={{ background: 'white', color: '#0e7490' }}>
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/>
               </svg>
