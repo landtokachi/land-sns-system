@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import OpenAI from 'openai'
 
+export const maxDuration = 60
+
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 const adminSupabase = createAdminClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -43,10 +45,11 @@ function extractTextFromHtml(html: string): string {
   text = text.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
   text = text.replace(/<[^>]+>/g, ' ')
   text = text.replace(/\s+/g, ' ').trim()
-  return text.slice(0, 4000)
+  return text.slice(0, 6000)
 }
 
-async function fetchPageText(url: string): Promise<string | null> {
+// ページのHTMLを取得（HTMLのみ）
+async function fetchPageHtml(url: string, timeoutMs = 8000): Promise<string | null> {
   try {
     const res = await fetch(url, {
       headers: {
@@ -54,14 +57,58 @@ async function fetchPageText(url: string): Promise<string | null> {
         'Accept': 'text/html,application/xhtml+xml',
         'Accept-Language': 'ja,en',
       },
-      signal: AbortSignal.timeout(8000),
+      signal: AbortSignal.timeout(timeoutMs),
     })
     if (!res.ok) return null
-    const html = await res.text()
-    return extractTextFromHtml(html)
+    const ct = res.headers.get('content-type') || ''
+    if (!ct.includes('html')) return null
+    return await res.text()
   } catch {
     return null
   }
+}
+
+// ページ内のリンク（href + リンク文）を抽出
+function extractAnchors(html: string): { href: string; text: string }[] {
+  const out: { href: string; text: string }[] = []
+  const re = /<a\s[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi
+  let m: RegExpExecArray | null
+  while ((m = re.exec(html)) !== null) {
+    const href = m[1]
+    const text = m[2].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+    if (href) out.push({ href, text })
+  }
+  return out
+}
+
+// 補助金・募集の「詳細ページ」リンクを最大max件、関連度順に選ぶ（同一ドメインHTMLのみ）
+function pickDetailLinks(html: string, baseUrl: string, max = 2): string[] {
+  const KEYWORDS = ['公募', '募集要項', '募集', '要領', '詳細', 'お知らせ', '案内', '申請', '補助', '助成', '開催', 'セミナー', 'イベント', '説明会', '相談会']
+  let base: URL
+  try { base = new URL(baseUrl) } catch { return [] }
+  const baseHost = base.hostname.replace(/^www\./, '')
+  const seen = new Set<string>([baseUrl.split('#')[0]])
+  const scored: { url: string; score: number }[] = []
+  for (const { href, text } of extractAnchors(html)) {
+    let u: URL
+    try { u = new URL(href, base) } catch { continue }
+    const clean = u.origin + u.pathname + u.search
+    if (seen.has(clean)) continue
+    const host = u.hostname.replace(/^www\./, '')
+    if (host !== baseHost) continue                                  // 同一ドメインのみ
+    if (/\.(pdf|zip|docx?|xlsx?|pptx?|jpe?g|png|gif|svg)$/i.test(u.pathname)) continue  // ファイルは対象外
+    if (/(index|about|facility|works|charge|recruit|request|privacy|sitemap|login|tp_list|fd_list|fd_search)\.php$/i.test(u.pathname)) continue // ナビ系を除外
+    const hay = text + ' ' + decodeURIComponent(u.pathname + u.search)
+    let score = 0
+    for (const k of KEYWORDS) if (hay.includes(k)) score += 1
+    if (/(detail|tp_detail|article|news|topics|jirei|shien|hojo)/i.test(u.pathname)) score += 1
+    if (text.length >= 10) score += 1
+    if (score < 3) continue   // 一覧ページはリンクが多いのでノイズ抑制のため閾値高め
+    seen.add(clean)
+    scored.push({ url: clean, score })
+  }
+  scored.sort((a, b) => b.score - a.score)
+  return scored.slice(0, max).map((s) => s.url)
 }
 
 export async function POST(request: NextRequest) {
@@ -82,11 +129,29 @@ export async function POST(request: NextRequest) {
 
   for (const source of targetSources) {
     try {
-      const pageText = await fetchPageText(source.url)
-      if (!pageText) {
+      const html = await fetchPageHtml(source.url)
+      if (!html) {
         results.push({ source_name: source.name, url: source.url, status: 'fetch_failed', error: 'ページを取得できませんでした' })
         continue
       }
+      let pageText = extractTextFromHtml(html)
+      if (!pageText || pageText.length < 100) {
+        results.push({ source_name: source.name, url: source.url, status: 'fetch_failed', error: '本文が取得できませんでした' })
+        continue
+      }
+
+      // ★リンク先追跡：詳細ページを最大2件たどって本文を補強する
+      const detailUrls = pickDetailLinks(html, source.url, 2)
+      for (const durl of detailUrls) {
+        const dhtml = await fetchPageHtml(durl, 6000)
+        if (dhtml) {
+          const dtext = extractTextFromHtml(dhtml)
+          if (dtext && dtext.length > 200) {
+            pageText += `\n\n----- 関連詳細ページ（${durl}） -----\n${dtext}`
+          }
+        }
+      }
+      pageText = pageText.slice(0, 12000)
 
       // AIで投稿候補になりそうな情報を抽出
       const today = new Date().toISOString().slice(0, 10) // YYYY-MM-DD
@@ -98,15 +163,17 @@ export async function POST(request: NextRequest) {
 
 本日の日付: ${today}
 
-以下は「${source.name}」（${source.url}）のページ内容です。
+以下は「${source.name}」（${source.url}）のページ内容です（必要に応じて関連詳細ページの内容も後ろに付加しています）。
 このページから、LANDのSNS投稿に使えそうな【最新の情報】を最大5件抽出してください。
 ━━━━━━━━━━━━━━━━━━━━━━
 【情報抽出の絶対ルール（最重要）】
 ◆ 下の「ページ内容」に明記されている情報だけを抽出する。
 ◆ 書かれていない金額・補助率・締切日・開催日・対象者・要件・定員は、絶対に推測・補完しない。不明な項目は必ず null（文字列の欄は空文字 "" ）にする。
 ◆ 常識や経験での穴埋めは禁止。別々の制度の金額・締切を混同しない。
-◆ summary には、ページ本文に実在する記述だけを書く。存在しない数字・日付を作らない。
-◆ 金額・締切日・開催日は、ページ本文の表記をそのままの数値で引用する。
+◆ summary と raw_text には、ページ本文に実在する記述だけを書く。存在しない数字・日付を作らない。
+◆ 金額・補助率・締切日・開催日は、ページ本文の表記をそのままの数値で引用する。
+◆ 「----- 関連詳細ページ -----」以降のテキストは、各情報の詳細（金額・補助率・締切・対象者など）を補うための補足。該当する情報の詳細を充実させるために使い、別の情報と混同しないこと。
+◆ 補助金などで複数の枠・ステージ・コース・対象区分がある場合は、各区分ごとに「名称・補助率・上限額・対象者・締切」を区別して raw_text に残す（1つにまとめて薄くしない）。
 ━━━━━━━━━━━━━━━━━━━━━━
 
 【抽出基準】
@@ -132,6 +199,7 @@ ${pageText}
     {
       "title": "タイトル（40文字以内）",
       "summary": "要約（200文字以内。ページ本文に明記された内容のみ。書かれていない金額・締切・対象者は推測で補わず省略。本文に金額・締切がある場合はその数値をそのまま含める）",
+      "raw_text": "投稿文作成に使う重要情報を、ページ本文の表記のまま引用した抜粋（1500文字以内）。複数の枠・ステージ・コースがある場合は各区分の名称・補助率・上限額・対象者・締切を漏れなく書き出す（1つにまとめない）。金額・締切は本文の数値をそのまま。本文に無い情報は書かない",
       "category": "${source.category || 'お知らせ・募集'}",
       "target_audience": "対象者",
       "event_date": "開催日（YYYY-MM-DD、なければnull）",
@@ -149,7 +217,7 @@ ${pageText}
 古い情報・終了した情報は絶対に含めないでください。`
         }],
         response_format: { type: 'json_object' },
-        temperature: 0.3,
+        temperature: 0.2,
       })
 
       const content = response.choices[0].message.content
@@ -180,7 +248,7 @@ ${pageText}
       title: c.title as string,
       source_url: c.source_url as string,
       source_name: (results.find(r2 => r2.url === c.source_url)?.source_name) as string,
-      raw_text: c.summary as string,
+      raw_text: ((c.raw_text as string) && String(c.raw_text).trim().length > 0 ? (c.raw_text as string) : (c.summary as string)),
       ai_summary: c.summary as string,
       category: c.category as string,
       target_audience: c.target_audience as string | null,
