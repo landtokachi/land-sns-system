@@ -227,12 +227,27 @@ ${pageText}
     if (!content) throw new Error('Empty response')
 
     const parsed = JSON.parse(content)
+    const items = parsed.items || []
+
+    // ★締切超過の警告：締切日・開催日が今日（日本時間）より前なら、募集終了の可能性を知らせる
+    const todayStr = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10) // YYYY-MM-DD（JST基準）
+    const warnings: string[] = []
+    for (const it of items) {
+      const dl = it?.deadline
+      const ev = it?.event_date
+      if (dl && /^\d{4}-\d{2}-\d{2}$/.test(dl) && dl < todayStr) {
+        warnings.push(`⚠️「${it.title || 'この情報'}」は申込締切（${dl}）を過ぎています。募集が終了している可能性があるため、投稿前に最新の募集状況を必ずご確認ください。`)
+      } else if (ev && /^\d{4}-\d{2}-\d{2}$/.test(ev) && ev < todayStr) {
+        warnings.push(`⚠️「${it.title || 'この情報'}」は開催日（${ev}）を過ぎています。終了済みの可能性があるため、投稿前にご確認ください。`)
+      }
+    }
+
     return NextResponse.json({
       fetch_success: true,
       site_name: parsed.site_name || null,
       page_type: parsed.page_type || 'single',
-      items: parsed.items || [],
-      unclear_points: parsed.unclear_points || [],
+      items,
+      unclear_points: [...warnings, ...(parsed.unclear_points || [])],
     } satisfies FetchUrlResponse)
   } catch (error) {
     console.error('fetch-url error:', error)
