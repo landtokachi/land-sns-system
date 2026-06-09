@@ -57,27 +57,31 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         'lg:relative lg:translate-x-0',
         isOpen === false ? '-translate-x-full' : 'translate-x-0',
       )}
-      style={{ background: '#fff', borderRight: '1px solid #e2e8f0', boxShadow: '2px 0 8px rgba(0,0,0,0.04)' }}
+      style={{
+        background: 'linear-gradient(185deg, #1e1b4b 0%, #312e81 48%, #4c1d95 100%)',
+        borderRight: '1px solid rgba(255,255,255,0.06)',
+        boxShadow: '2px 0 28px rgba(30,27,75,0.35)',
+      }}
     >
       {/* Logo */}
       <div className="px-4 h-14 flex items-center gap-3 flex-shrink-0"
-        style={{ borderBottom: '1px solid #f1f5f9', background: 'linear-gradient(135deg, #faf9ff, #fff)' }}>
-        <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
-          style={{ background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', boxShadow: '0 2px 8px rgba(79,70,229,0.35)' }}>
-          <span className="text-white text-sm font-black">L</span>
+        style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+        <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+          style={{ background: 'linear-gradient(135deg, #818cf8, #c084fc)', boxShadow: '0 4px 14px rgba(168,85,247,0.55)' }}>
+          <span className="text-white text-base font-black">L</span>
         </div>
         <div>
-          <p className="text-sm font-bold text-slate-900 leading-none">LAND</p>
-          <p className="text-xs text-slate-400 mt-0.5">SNS管理</p>
+          <p className="text-sm font-bold text-white leading-none tracking-wide">LAND</p>
+          <p className="text-[11px] text-indigo-300/80 mt-1">SNS管理</p>
         </div>
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-3 py-3 overflow-y-auto space-y-5">
+      <nav className="flex-1 px-3 py-4 overflow-y-auto space-y-5">
         {navGroups.map(group => (
           <div key={group.label}>
-            <p className="text-xs font-semibold text-slate-400 px-2 mb-1.5 uppercase tracking-wider">{group.label}</p>
-            <div className="space-y-0.5">
+            <p className="text-[10px] font-semibold text-indigo-300/60 px-2 mb-1.5 uppercase tracking-[0.12em]">{group.label}</p>
+            <div className="space-y-1">
               {group.items.map(item => {
                 const isActive =
                   pathname === item.href ||
@@ -85,12 +89,19 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 return (
                   <Link key={item.href} href={item.href} onClick={onClose}
                     className={clsx(
-                      'flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm transition-all duration-150',
+                      'group relative flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-sm transition-all duration-150',
                       isActive
-                        ? 'nav-active'
-                        : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50',
-                    )}>
-                    <span className={isActive ? 'text-indigo-600' : 'text-slate-400'}>
+                        ? 'text-white font-semibold'
+                        : 'text-indigo-100/70 hover:text-white hover:bg-white/10',
+                    )}
+                    style={isActive ? {
+                      background: 'linear-gradient(135deg, #6366f1, #a855f7)',
+                      boxShadow: '0 6px 18px rgba(124,58,237,0.45)',
+                    } : undefined}>
+                    {isActive && (
+                      <span className="absolute -left-3 top-1/2 -translate-y-1/2 h-5 w-1 rounded-full bg-white/90" />
+                    )}
+                    <span className={isActive ? 'text-white' : 'text-indigo-300/80 group-hover:text-white transition-colors'}>
                       {item.icon}
                     </span>
                     {item.label}
@@ -103,16 +114,16 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       </nav>
 
       {/* User */}
-      <div className="px-3 py-3 flex-shrink-0" style={{ borderTop: '1px solid #f1f5f9' }}>
+      <div className="px-3 py-3 flex-shrink-0" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
         <div className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl"
-          style={{ background: 'linear-gradient(135deg, #eef2ff, #f5f3ff)' }}>
+          style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.06)' }}>
           <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
-            style={{ background: 'linear-gradient(135deg, #4f46e5, #7c3aed)' }}>
+            style={{ background: 'linear-gradient(135deg, #818cf8, #c084fc)', boxShadow: '0 2px 8px rgba(168,85,247,0.5)' }}>
             L
           </div>
           <div className="min-w-0">
-            <p className="text-xs font-semibold text-slate-700 truncate">LAND スタッフ</p>
-            <p className="text-xs text-slate-400 truncate">とかち財団</p>
+            <p className="text-xs font-semibold text-white truncate">LAND スタッフ</p>
+            <p className="text-[11px] text-indigo-300/70 truncate">とかち財団</p>
           </div>
         </div>
       </div>
