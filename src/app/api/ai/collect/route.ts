@@ -132,8 +132,9 @@ async function processSource(source: SourceDef): Promise<CollectResult> {
       return { source_name: source.name, url: source.url, status: 'fetch_failed', error: '本文が取得できませんでした' }
     }
 
-    // ★リンク先追跡：詳細ページを最大1件たどって本文を補強（巡回は件数が多いので軽めに）
-    const detailUrls = pickDetailLinks(html, source.url, 1)
+    // ★リンク先追跡：詳細ページを最大2件たどって本文を補強（深く収集）
+    //   フロント側が少数ずつ分割送信するため、1リクエストの負荷は小さく保たれる
+    const detailUrls = pickDetailLinks(html, source.url, 2)
     const detailTexts = await Promise.all(detailUrls.map(async (durl) => {
       const dhtml = await fetchPageHtml(durl, 4000)
       if (!dhtml) return ''

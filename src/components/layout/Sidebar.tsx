@@ -67,7 +67,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       <div className="px-4 h-14 flex items-center gap-3 flex-shrink-0"
         style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
         <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-          style={{ background: 'linear-gradient(135deg, #2563eb, #06b6d4)', boxShadow: '0 4px 16px rgba(6,182,212,0.5)' }}>
+          style={{ background: 'linear-gradient(135deg, #2563eb, #0891b2)', boxShadow: '0 2px 8px rgba(8,47,73,0.3)' }}>
           <span className="text-white text-base font-black">L</span>
         </div>
         <div>
@@ -95,11 +95,11 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                         : 'text-slate-300 hover:text-white hover:bg-white/10',
                     )}
                     style={isActive ? {
-                      background: 'linear-gradient(135deg, #2563eb, #06b6d4)',
-                      boxShadow: '0 6px 18px rgba(6,182,212,0.4)',
+                      background: 'linear-gradient(135deg, #2563eb, #0891b2)',
+                      boxShadow: '0 2px 8px rgba(8,47,73,0.25)',
                     } : undefined}>
                     {isActive && (
-                      <span className="absolute -left-3 top-1/2 -translate-y-1/2 h-5 w-1 rounded-full bg-white/90" />
+                      <span className="absolute -left-3 top-1/2 -translate-y-1/2 h-5 w-1 rounded-full bg-white/50" />
                     )}
                     <span className={isActive ? 'text-white' : 'text-sky-300/70 group-hover:text-white transition-colors'}>
                       {item.icon}
@@ -118,7 +118,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         <div className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl"
           style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.06)' }}>
           <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
-            style={{ background: 'linear-gradient(135deg, #2563eb, #06b6d4)', boxShadow: '0 2px 8px rgba(6,182,212,0.5)' }}>
+            style={{ background: 'linear-gradient(135deg, #2563eb, #0891b2)', boxShadow: '0 1px 6px rgba(8,47,73,0.3)' }}>
             L
           </div>
           <div className="min-w-0">

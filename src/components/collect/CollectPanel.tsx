@@ -92,7 +92,7 @@ export function CollectPanel() {
     setResult(null)
 
     // ★サイトを5件ずつに分割して順番に収集（1回のリクエストを軽くしてタイムアウトを防ぐ）
-    const CHUNK = 5
+    const CHUNK = 3
     const allResults: SourceResult[] = []
     let savedTotal = 0
     let foundTotal = 0
