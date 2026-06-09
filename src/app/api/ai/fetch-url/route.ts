@@ -12,6 +12,82 @@ function extractTextFromHtml(html: string): string {
   return text.slice(0, 8000)
 }
 
+// ページ内の<title>の主要部分（｜より前）を取り出す
+function extractTitleCore(html: string): string {
+  const m = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)
+  if (!m) return ''
+  return m[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().split(/[|｜\-–—]/)[0].trim()
+}
+
+// ページ内のリンク（href + リンク文）を抽出
+function extractAnchors(html: string): { href: string; text: string }[] {
+  const out: { href: string; text: string }[] = []
+  const re = /<a\s[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi
+  let m: RegExpExecArray | null
+  while ((m = re.exec(html)) !== null) {
+    const href = m[1]
+    const text = m[2].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+    if (href) out.push({ href, text })
+  }
+  return out
+}
+
+// 補助金・募集ページの「詳細ページ」リンクを最大max件、関連度順に選ぶ（同一ドメインHTMLのみ）
+function pickDetailLinks(html: string, baseUrl: string, max = 2): string[] {
+  const KEYWORDS = ['公募', '募集要項', '募集', '要領', '詳細', 'お知らせ', '案内', '申請', '補助', '助成', '開催', 'セミナー', 'イベント', '説明会']
+  let base: URL
+  try { base = new URL(baseUrl) } catch { return [] }
+  const baseHost = base.hostname.replace(/^www\./, '')
+  const titleCore = extractTitleCore(html)
+  const seen = new Set<string>([baseUrl.split('#')[0]])
+  const scored: { url: string; score: number }[] = []
+
+  for (const { href, text } of extractAnchors(html)) {
+    let u: URL
+    try { u = new URL(href, base) } catch { continue }
+    const clean = u.origin + u.pathname + u.search
+    if (seen.has(clean)) continue
+    const host = u.hostname.replace(/^www\./, '')
+    if (host !== baseHost) continue                                  // 同一ドメインのみ
+    if (/\.(pdf|zip|docx?|xlsx?|pptx?|jpe?g|png|gif|svg)$/i.test(u.pathname)) continue  // ファイルは現状対象外
+    if (/(index|about|facility|works|charge|recruit|request|privacy|sitemap|login|tp_list|fd_list|fd_search)\.php$/i.test(u.pathname)) continue // ナビ系を除外
+
+    const hay = text + ' ' + decodeURIComponent(u.pathname + u.search)
+    let score = 0
+    for (const k of KEYWORDS) if (hay.includes(k)) score += 1
+    if (/(detail|tp_detail|article|news|topics)/i.test(u.pathname)) score += 1
+    if (text.length >= 12) score += 1
+    if (titleCore && titleCore.length >= 4 && text.includes(titleCore)) score += 5  // 同じ主題のリンクを強く優先
+
+    if (score < 2) continue
+    seen.add(clean)
+    scored.push({ url: clean, score })
+  }
+
+  scored.sort((a, b) => b.score - a.score)
+  return scored.slice(0, max).map((s) => s.url)
+}
+
+// URLを取得して本文テキストを返す（HTMLのみ）
+async function fetchPageText(url: string, timeoutMs = 10000): Promise<string> {
+  try {
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; LANDBot/1.0)',
+        'Accept': 'text/html,application/xhtml+xml',
+        'Accept-Language': 'ja,en',
+      },
+      signal: AbortSignal.timeout(timeoutMs),
+    })
+    if (!res.ok) return ''
+    const ct = res.headers.get('content-type') || ''
+    if (!ct.includes('html')) return ''
+    return extractTextFromHtml(await res.text())
+  } catch {
+    return ''
+  }
+}
+
 export interface FetchUrlItem {
   title: string
   summary: string
@@ -45,6 +121,7 @@ export async function POST(request: NextRequest) {
 
   let pageText = ''
   let fetchSuccess = false
+  const followedUrls: string[] = []
   try {
     const res = await fetch(url, {
       headers: {
@@ -58,6 +135,19 @@ export async function POST(request: NextRequest) {
       const html = await res.text()
       pageText = extractTextFromHtml(html)
       fetchSuccess = pageText.length > 200
+
+      // ★リンク先追跡：詳細ページを最大2件たどって本文を補強する
+      if (fetchSuccess) {
+        const detailUrls = pickDetailLinks(html, url, 2)
+        for (const durl of detailUrls) {
+          const dtext = await fetchPageText(durl)
+          if (dtext && dtext.length > 200) {
+            pageText += `\n\n----- 関連詳細ページ（${durl}） -----\n${dtext}`
+            followedUrls.push(durl)
+          }
+        }
+        pageText = pageText.slice(0, 16000)
+      }
     }
   } catch {
     // fetch失敗
@@ -91,9 +181,10 @@ export async function POST(request: NextRequest) {
 ◆ summary と raw_text には、ページ本文に実在する記述だけを書く。存在しない数字・日付を作らない。
 ◆ 金額・補助率・締切日・開催日は、ページ本文の表記をそのままの数値で引用する（言い換えや概算をしない）。
 ◆ 本文が短く情報が乏しい場合は、無理に項目を埋めず null・空文字のままにし、unclear_points に不足項目を挙げる。
+◆ 「----- 関連詳細ページ -----」以降のテキストは、メインページの主題（同じ制度・イベント）の詳細（金額・補助率・締切・対象者など）を補うための補足情報。これを使ってメインの情報を充実させてよいが、メインと無関係な別の制度・イベントを新しいitemとして増やさないこと。
 ━━━━━━━━━━━━━━━━━━━━━━
 
-以下はURL「${url}」のWebページ内容です。
+以下はURL「${url}」のWebページ内容です（必要に応じて関連詳細ページの内容も後ろに付加しています）。
 このページからSNS投稿に使えそうな情報を分析してください。
 【重要】
 - ページに複数の独立した情報（複数の補助金、複数のイベント等）がある場合は、それぞれを別のitemsとして返す（最大5件）
