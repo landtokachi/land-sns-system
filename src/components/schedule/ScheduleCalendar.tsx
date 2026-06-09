@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, addMonths, subMonths, addWeeks, subWeeks, isSameMonth, isSameDay, isToday, parseISO } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import Link from 'next/link'
+import { createClient } from '@/lib/supabase/client'
 
 type Platform = 'instagram' | 'facebook' | 'x' | 'line'
 type PostStatus = 'draft' | 'ready' | 'scheduled' | 'published' | 'skipped' | 'failed'
@@ -68,6 +69,31 @@ export default function ScheduleCalendar() {
   })
   const [saving, setSaving] = useState(false)
 
+  // ── 新規作成モード用 ──
+  const [addMode, setAddMode] = useState<'existing' | 'new'>('existing')
+  const [newForm, setNewForm] = useState({ title: '', source_url: '', source_name: '', raw_text: '', category: '', event_date: '', deadline: '' })
+  const [importInput, setImportInput] = useState<'url' | 'pdf'>('url')
+  const [urlFetching, setUrlFetching] = useState(false)
+  const [pdfLoading, setPdfLoading] = useState(false)
+  const [importMsg, setImportMsg] = useState('')
+  const [pdfjsReady, setPdfjsReady] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // PDF.js を読み込む
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const w = window as unknown as Record<string, unknown>
+    if (w.pdfjsLib) { setPdfjsReady(true); return }
+    const script = document.createElement('script')
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js'
+    script.onload = () => {
+      const pdfjs = (window as unknown as Record<string, { GlobalWorkerOptions: { workerSrc: string } }>).pdfjsLib
+      if (pdfjs) pdfjs.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'
+      setPdfjsReady(true)
+    }
+    document.head.appendChild(script)
+  }, [])
+
   const fetchPosts = useCallback(async () => {
     setLoading(true)
     const year = currentDate.getFullYear()
@@ -93,36 +119,143 @@ export default function ScheduleCalendar() {
     } catch { setCandidates([]) }
   }
 
+  const resetNewForm = () => {
+    setNewForm({ title: '', source_url: '', source_name: '', raw_text: '', category: '', event_date: '', deadline: '' })
+    setImportMsg(''); setImportInput('url')
+  }
+
   const openAddModal = (date?: Date) => {
     fetchCandidates()
+    setAddMode('existing')
+    resetNewForm()
     setAddForm(f => ({
       ...f,
+      post_candidate_id: '',
       scheduled_date: date ? format(date, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
     }))
     setShowAddModal(true)
   }
 
+  // URLを読み込んで新規フォームに反映
+  const handleImportUrl = async () => {
+    if (!newForm.source_url) return
+    setUrlFetching(true); setImportMsg('')
+    try {
+      const res = await fetch('/api/ai/fetch-url', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: newForm.source_url }) })
+      const data = await res.json()
+      if (data.fetch_success && data.items?.length > 0) {
+        const item = data.items[0]
+        setNewForm(f => ({
+          ...f,
+          title: item.title || f.title,
+          source_name: data.site_name || f.source_name,
+          raw_text: item.raw_text || f.raw_text,
+          category: item.category || f.category,
+          event_date: item.event_date || f.event_date,
+          deadline: item.deadline || f.deadline,
+        }))
+        setImportMsg(data.items.length > 1 ? `✅ ${data.items.length}件のうち最初の情報を反映しました（必要なら本文を編集してください）` : '✅ 内容を読み取りました')
+      } else {
+        setImportMsg('⚠️ 自動で読み取れませんでした。タイトル・本文を手入力してください。')
+      }
+    } catch {
+      setImportMsg('⚠️ 読み取りに失敗しました。タイトル・本文を手入力してください。')
+    } finally {
+      setUrlFetching(false)
+    }
+  }
+
+  // PDFを読み込んで新規フォームに反映
+  const handleImportPdf = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]; if (!file) return
+    setPdfLoading(true); setImportMsg('')
+    try {
+      type PdfJs = { getDocument: (o: { data: ArrayBuffer }) => { promise: Promise<{ numPages: number; getPage: (n: number) => Promise<{ getTextContent: () => Promise<{ items: Array<{ str: string }> }> }> }> } }
+      const pdfjs = (window as unknown as Record<string, PdfJs>).pdfjsLib
+      if (!pdfjs) throw new Error('PDF.jsが読み込まれていません')
+      const ab = await file.arrayBuffer()
+      const pdf = await pdfjs.getDocument({ data: ab }).promise
+      let txt = ''
+      for (let i = 1; i <= Math.min(pdf.numPages, 10); i++) {
+        const page = await pdf.getPage(i)
+        const c = await page.getTextContent()
+        txt += c.items.map(x => x.str).join(' ') + '\n'
+      }
+      if (txt.trim().length < 20) { setImportMsg('⚠️ テキストを読み取れませんでした（画像のみのPDFは非対応）'); return }
+      const res = await fetch('/api/ai/from-pdf', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: txt, filename: file.name }) })
+      if (!res.ok) throw new Error('API error')
+      const r = await res.json()
+      setNewForm(f => ({
+        ...f,
+        title: (r.title as string) || f.title,
+        raw_text: (r.summary as string) || f.raw_text,
+        category: (r.category as string) || f.category,
+        event_date: (r.event_date as string) || f.event_date,
+        deadline: (r.deadline as string) || f.deadline,
+      }))
+      setImportMsg('✅ PDFを読み取りました')
+    } catch (err) {
+      setImportMsg('⚠️ PDF分析に失敗しました: ' + String(err))
+    } finally {
+      setPdfLoading(false)
+    }
+  }
+
   const handleAddSchedule = async () => {
-    if (!addForm.post_candidate_id || !addForm.scheduled_date) return
+    if (!addForm.scheduled_date) return
+    const scheduled_at = `${addForm.scheduled_date}T${addForm.scheduled_time}:00`
     setSaving(true)
     try {
-      const scheduled_at = `${addForm.scheduled_date}T${addForm.scheduled_time}:00`
+      let candidateId = addForm.post_candidate_id
+
+      if (addMode === 'new') {
+        if (!newForm.title.trim()) { setSaving(false); return }
+        // 新しい投稿候補を作成（後から投稿候補ページでAI生成・編集できる）
+        const supabase = createClient()
+        const { data: created, error } = await supabase
+          .from('post_candidates')
+          .insert({
+            title: newForm.title.trim(),
+            source_url: newForm.source_url || null,
+            source_name: newForm.source_name || null,
+            raw_text: newForm.raw_text || null,
+            category: newForm.category || null,
+            event_date: newForm.event_date || null,
+            deadline: newForm.deadline || null,
+            status: 'drafting',
+            priority: 'medium',
+            importance: 'normal',
+            platforms: [addForm.platform],
+          })
+          .select('id')
+          .single()
+        if (error || !created) { alert('候補の作成に失敗しました: ' + (error?.message || '')); setSaving(false); return }
+        candidateId = created.id
+      }
+
+      if (!candidateId) { setSaving(false); return }
+
       await fetch('/api/schedule', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          post_candidate_id: addForm.post_candidate_id,
+          post_candidate_id: candidateId,
           platform: addForm.platform,
           scheduled_at,
         }),
       })
       setShowAddModal(false)
       setAddForm({ post_candidate_id: '', platform: 'instagram', scheduled_date: '', scheduled_time: '10:00' })
+      resetNewForm()
       await fetchPosts()
     } finally {
       setSaving(false)
     }
   }
+
+  const canSubmit = addMode === 'existing'
+    ? !!addForm.post_candidate_id && !!addForm.scheduled_date
+    : !!newForm.title.trim() && !!addForm.scheduled_date
 
   const getPostsForDay = (date: Date) => {
     return posts.filter(p => isSameDay(parseISO(p.scheduled_at), date))
@@ -381,6 +514,11 @@ export default function ScheduleCalendar() {
                       {post.post_text && (
                         <p className="text-xs text-gray-500 mt-2 line-clamp-3 leading-relaxed">{post.post_text}</p>
                       )}
+                      {!post.post_text && (
+                        <Link href={`/candidates/${post.post_candidate_id}`} className="inline-block mt-2 text-xs text-indigo-600 hover:underline">
+                          ✍️ AI投稿文を生成する →
+                        </Link>
+                      )}
                     </div>
                   )
                 })}
@@ -393,26 +531,80 @@ export default function ScheduleCalendar() {
       {/* ── 投稿追加モーダル ── */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
             <div className="px-6 py-5 border-b border-gray-100">
               <h3 className="text-lg font-bold text-gray-800">投稿予定を追加</h3>
-              <p className="text-sm text-gray-500 mt-0.5">投稿候補から選んでスケジュールを設定してください</p>
+              <p className="text-sm text-gray-500 mt-0.5">既存の候補から選ぶか、新しく作成できます</p>
             </div>
             <div className="px-6 py-5 space-y-4">
-              {/* 投稿候補選択 */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">投稿候補 <span className="text-red-500">*</span></label>
-                <select
-                  value={addForm.post_candidate_id}
-                  onChange={e => setAddForm(f => ({ ...f, post_candidate_id: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-300"
-                >
-                  <option value="">-- 選択してください --</option>
-                  {candidates.map(c => (
-                    <option key={c.id} value={c.id}>{c.title}{c.category ? ` (${c.category})` : ''}</option>
-                  ))}
-                </select>
+              {/* モード切替 */}
+              <div className="flex bg-gray-100 rounded-lg p-1">
+                <button
+                  onClick={() => setAddMode('existing')}
+                  className={`flex-1 py-2 text-sm rounded-md transition-all ${addMode === 'existing' ? 'bg-white shadow text-gray-800 font-medium' : 'text-gray-500 hover:text-gray-700'}`}
+                >既存の候補から
+                </button>
+                <button
+                  onClick={() => setAddMode('new')}
+                  className={`flex-1 py-2 text-sm rounded-md transition-all ${addMode === 'new' ? 'bg-white shadow text-gray-800 font-medium' : 'text-gray-500 hover:text-gray-700'}`}
+                >＋ 新しく作る
+                </button>
               </div>
+
+              {addMode === 'existing' ? (
+                /* 投稿候補選択 */
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">投稿候補 <span className="text-red-500">*</span></label>
+                  <select
+                    value={addForm.post_candidate_id}
+                    onChange={e => setAddForm(f => ({ ...f, post_candidate_id: e.target.value }))}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                  >
+                    <option value="">-- 選択してください --</option>
+                    {candidates.map(c => (
+                      <option key={c.id} value={c.id}>{c.title}{c.category ? ` (${c.category})` : ''}</option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                /* 新規作成 */
+                <div className="space-y-3">
+                  {/* 取り込み方法 */}
+                  <div className="flex rounded-lg overflow-hidden border border-gray-200 w-fit">
+                    {([{ k: 'url' as const, l: '🔗 URLから' }, { k: 'pdf' as const, l: '📄 PDFから' }]).map(m => (
+                      <button key={m.k} type="button" onClick={() => { setImportInput(m.k); setImportMsg('') }} className="px-3 py-1.5 text-xs font-medium transition-colors" style={importInput === m.k ? { background: '#4f46e5', color: '#fff' } : { background: '#f8fafc', color: '#64748b' }}>{m.l}</button>
+                    ))}
+                  </div>
+
+                  {importInput === 'url' ? (
+                    <div className="flex gap-2">
+                      <input type="url" value={newForm.source_url} onChange={e => setNewForm(f => ({ ...f, source_url: e.target.value }))} placeholder="https://..." className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm" />
+                      <button type="button" onClick={handleImportUrl} disabled={!newForm.source_url || urlFetching} className="px-3 py-2 rounded-lg text-xs font-medium bg-indigo-50 text-indigo-600 border border-indigo-200 disabled:opacity-50 whitespace-nowrap">{urlFetching ? '読み取り中...' : '🔍 読み込む'}</button>
+                    </div>
+                  ) : (
+                    <div>
+                      <div className="border-2 border-dashed border-indigo-300 rounded-xl p-5 text-center cursor-pointer hover:border-indigo-500 hover:bg-indigo-50 transition-colors" onClick={() => fileInputRef.current?.click()}>
+                        <div className="text-2xl mb-1">📎</div>
+                        <p className="text-xs font-medium text-gray-700">{pdfLoading ? 'PDFを解析中...' : 'クリックしてチラシPDFを選択'}</p>
+                        <input ref={fileInputRef} type="file" accept=".pdf" onChange={handleImportPdf} className="hidden" />
+                      </div>
+                      {!pdfjsReady && <p className="text-xs text-amber-600 mt-1">PDF読み取りエンジンを準備中...</p>}
+                    </div>
+                  )}
+
+                  {importMsg && <p className="text-xs text-gray-600">{importMsg}</p>}
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">タイトル <span className="text-red-500">*</span></label>
+                    <input value={newForm.title} onChange={e => setNewForm(f => ({ ...f, title: e.target.value }))} placeholder="投稿のタイトル" className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">本文・メモ（任意）</label>
+                    <textarea value={newForm.raw_text} onChange={e => setNewForm(f => ({ ...f, raw_text: e.target.value }))} rows={4} placeholder="URL/PDFを読み込むと自動入力されます。後から投稿候補ページでAI投稿文を生成できます。" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
+                  </div>
+                  <p className="text-xs text-gray-400">※ 作成後、投稿候補ページで「AI投稿文を生成」できます。</p>
+                </div>
+              )}
 
               {/* プラットフォーム */}
               <div>
@@ -465,7 +657,7 @@ export default function ScheduleCalendar() {
               </button>
               <button
                 onClick={handleAddSchedule}
-                disabled={saving || !addForm.post_candidate_id || !addForm.scheduled_date}
+                disabled={saving || !canSubmit}
                 className="flex-1 py-2.5 rounded-lg text-sm font-medium text-white transition-all disabled:opacity-50"
                 style={{ background: 'linear-gradient(135deg, #667eea, #764ba2)' }}
               >
