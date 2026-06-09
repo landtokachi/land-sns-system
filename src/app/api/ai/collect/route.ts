@@ -132,10 +132,10 @@ async function processSource(source: SourceDef): Promise<CollectResult> {
       return { source_name: source.name, url: source.url, status: 'fetch_failed', error: '本文が取得できませんでした' }
     }
 
-    // ★リンク先追跡：詳細ページを最大2件たどって本文を補強（並列取得）
-    const detailUrls = pickDetailLinks(html, source.url, 2)
+    // ★リンク先追跡：詳細ページを最大1件たどって本文を補強（巡回は件数が多いので軽めに）
+    const detailUrls = pickDetailLinks(html, source.url, 1)
     const detailTexts = await Promise.all(detailUrls.map(async (durl) => {
-      const dhtml = await fetchPageHtml(durl, 5000)
+      const dhtml = await fetchPageHtml(durl, 4000)
       if (!dhtml) return ''
       const dtext = extractTextFromHtml(dhtml)
       return (dtext && dtext.length > 200) ? `\n\n----- 関連詳細ページ（${durl}） -----\n${dtext}` : ''
@@ -233,8 +233,25 @@ export async function POST(request: NextRequest) {
   const { sources } = await request.json().catch(() => ({ sources: null }))
   const targetSources: SourceDef[] = sources || COLLECTION_SOURCES
 
-  // ★全ソースを並列処理（直列だとサイト数×取得時間でタイムアウトするため）
-  const results: CollectResult[] = await Promise.all(targetSources.map((s) => processSource(s)))
+  // ★同時実行数を絞りつつ時間制限内で処理（サイト数が多くてもタイムアウトしないように）
+  // 時間内に処理しきれなかったサイトは status:'skipped' として返す（再実行で続きを取得）
+  const CONCURRENCY = 5
+  const TIME_BUDGET_MS = 40000
+  const startedAt = Date.now()
+  const results: CollectResult[] = []
+  let cursor = 0
+  async function worker() {
+    while (cursor < targetSources.length) {
+      const i = cursor++
+      const src = targetSources[i]
+      if (Date.now() - startedAt > TIME_BUDGET_MS) {
+        results.push({ source_name: src.name, url: src.url, status: 'skipped', error: '時間制限のためスキップ（もう一度「情報収集を開始」を押すと続きを収集します）' })
+        continue
+      }
+      results.push(await processSource(src))
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(CONCURRENCY, targetSources.length) }, () => worker()))
 
   // 収集した候補をDBに保存（ステータス: unconfirmed）
   const allCandidates = results.flatMap((r) =>
