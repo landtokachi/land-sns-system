@@ -6,6 +6,7 @@ import { ja } from 'date-fns/locale'
 import { CATEGORIES } from '@/lib/constants'
 import type { PostCandidate } from '@/types'
 import { InstagramLearner } from '@/components/candidates/InstagramLearner'
+import { DedupButton } from '@/components/candidates/DedupButton'
 
 // カテゴリー別の最大表示件数（デフォルト）
 const MAX_PER_CATEGORY = 3
@@ -157,13 +158,16 @@ export default async function CandidatesPage({
               )}
             </div>
           </div>
-          <Link href="/candidates/new"
-            className="btn-glow inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/>
-            </svg>
-            新規登録
-          </Link>
+          <div className="flex items-center gap-2">
+            <DedupButton />
+            <Link href="/candidates/new"
+              className="btn-glow inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/>
+              </svg>
+              新規登録
+            </Link>
+          </div>
         </div>
 
         {/* ── 未確認バナー ── */}

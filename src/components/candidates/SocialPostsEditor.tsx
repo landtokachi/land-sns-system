@@ -26,9 +26,18 @@ export function SocialPostsEditor({ candidate, initialPosts }: Props) {
   const [postSuccess, setPostSuccess] = useState<string | null>(null)
   const [postError, setPostError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [planCopied, setPlanCopied] = useState(false)
 
   function getPost(platform: Platform) {
     return posts.find((p) => p.platform === platform)
+  }
+
+  async function copyText(text: string, setFlag: (b: boolean) => void) {
+    try {
+      await navigator.clipboard.writeText(text)
+      setFlag(true)
+      setTimeout(() => setFlag(false), 3000)
+    } catch { /* clipboard不可 */ }
   }
 
   function updatePost(platform: Platform, field: string, value: string) {
@@ -313,6 +322,35 @@ export function SocialPostsEditor({ candidate, initialPosts }: Props) {
                   onChange={(e) => updatePost('instagram', 'image_subtitle', e.target.value)}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
+              </div>
+
+              {/* 🎨 Canvaで画像を作る導線 */}
+              <div className="mt-1 rounded-xl p-3" style={{ background: 'linear-gradient(135deg,#eff6ff,#ecfeff)', border: '1px solid #bae6fd' }}>
+                <p className="text-sm font-semibold text-gray-800 mb-0.5">🎨 画像をCanvaで作る</p>
+                <p className="text-xs text-gray-500 mb-2">下の構成案をコピー → Canvaのブランドテンプレに貼り付けると、ブランドに沿った画像をすぐ作れます。</p>
+                <pre className="bg-white border border-gray-200 rounded-lg p-2.5 text-xs text-gray-700 whitespace-pre-wrap font-sans mb-2">{[
+                  `【画像タイトル】${igPost.image_title || candidate.title}`,
+                  igPost.image_subtitle ? `【サブテキスト】${igPost.image_subtitle}` : '',
+                  candidate.deadline ? `【締切】${candidate.deadline}` : '',
+                  igPost.hashtags ? `【ハッシュタグ】${igPost.hashtags}` : '',
+                ].filter(Boolean).join('\n')}</pre>
+                <div className="flex gap-2">
+                  <button type="button"
+                    onClick={() => copyText([
+                      `【画像タイトル】${igPost.image_title || candidate.title}`,
+                      igPost.image_subtitle ? `【サブテキスト】${igPost.image_subtitle}` : '',
+                      candidate.deadline ? `【締切】${candidate.deadline}` : '',
+                      igPost.hashtags ? `【ハッシュタグ】${igPost.hashtags}` : '',
+                    ].filter(Boolean).join('\n'), setPlanCopied)}
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium bg-white text-sky-700 border border-sky-200 hover:bg-sky-50 transition-colors">
+                    {planCopied ? '✅ コピーしました' : '📋 構成案をコピー'}
+                  </button>
+                  <a href="https://www.canva.com/create/instagram-posts/" target="_blank" rel="noopener noreferrer"
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white"
+                    style={{ background: 'linear-gradient(135deg,#2563eb,#0891b2)' }}>
+                    🎨 Canvaを開く
+                  </a>
+                </div>
               </div>
             </div>
 

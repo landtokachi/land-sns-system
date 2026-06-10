@@ -125,7 +125,15 @@ export function CandidateForm({ initial, candidateId }: CandidateFormProps) {
     const supabase = createClient()
     const payload = { ...form, scheduled_at: form.scheduled_at ? new Date(form.scheduled_at).toISOString() : null, event_date: form.event_date||null, deadline: form.deadline||null }
     if (candidateId) { await supabase.from('post_candidates').update(payload).eq('id', candidateId); router.push('/candidates/'+candidateId) }
-    else { const {data} = await supabase.from('post_candidates').insert(payload).select().single(); if (data) router.push('/candidates/'+data.id) }
+    else {
+      // 重複防止：同じタイトルの候補が既にあれば確認する
+      const t = (form.title || '').trim()
+      if (t) {
+        const { data: dup } = await supabase.from('post_candidates').select('id').eq('title', t).limit(1)
+        if (dup && dup.length > 0 && !confirm('同じタイトルの投稿候補がすでにあります。\nそれでも新しく登録しますか？（重複して保存されます）')) { setLoading(false); return }
+      }
+      const {data} = await supabase.from('post_candidates').insert(payload).select().single(); if (data) router.push('/candidates/'+data.id)
+    }
     setLoading(false)
   }
 
