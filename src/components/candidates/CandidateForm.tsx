@@ -27,6 +27,7 @@ export function CandidateForm({ initial, candidateId }: CandidateFormProps) {
   const [pdfResult, setPdfResult] = useState<Record<string, unknown> | null>(null)
   const [pdfApplied, setPdfApplied] = useState(false)
   const [pdfError, setPdfError] = useState('')
+  const [pdfFullText, setPdfFullText] = useState('')
   const [pdfjsReady, setPdfjsReady] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -92,6 +93,7 @@ export function CandidateForm({ initial, candidateId }: CandidateFormProps) {
         txt += c.items.map(x => x.str).join(' ') + '\n'
       }
       if (txt.trim().length < 20) { setPdfError('テキストを読み取れませんでした（画像のみのPDFは非対応）'); return }
+      setPdfFullText(txt)
       const res = await fetch('/api/ai/from-pdf', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({text:txt, filename:file.name}) })
       if (!res.ok) throw new Error('API error')
       setPdfResult(await res.json())
@@ -103,7 +105,7 @@ export function CandidateForm({ initial, candidateId }: CandidateFormProps) {
     if (!pdfResult) return
     const isValidPriority = (v: unknown): v is Priority => v === 'high' || v === 'medium' || v === 'low'
     setForm(prev => ({ ...prev,
-      title: (pdfResult.title as string)||prev.title, raw_text: (pdfResult.summary as string)||prev.raw_text,
+      title: (pdfResult.title as string)||prev.title, raw_text: (pdfFullText ? pdfFullText.slice(0,6000) : (pdfResult.summary as string))||prev.raw_text,
       category: (pdfResult.category as string)||prev.category, target_audience: (pdfResult.target_audience as string)||prev.target_audience,
       organizer: (pdfResult.organizer as string)||prev.organizer, event_date: (pdfResult.event_date as string)||prev.event_date,
       deadline: (pdfResult.deadline as string)||prev.deadline, region: (pdfResult.region as string)||prev.region,

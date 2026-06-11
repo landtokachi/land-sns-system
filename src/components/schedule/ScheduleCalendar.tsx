@@ -188,7 +188,8 @@ export default function ScheduleCalendar() {
       setNewForm(f => ({
         ...f,
         title: (r.title as string) || f.title,
-        raw_text: (r.summary as string) || f.raw_text,
+        // ★PDF全文をraw_textに保存（生成時に詳しく正確な投稿文を作るため）。要約は補助
+        raw_text: (txt && txt.trim().length > 50 ? txt.slice(0, 6000) : ((r.summary as string) || f.raw_text)),
         category: (r.category as string) || f.category,
         event_date: (r.event_date as string) || f.event_date,
         deadline: (r.deadline as string) || f.deadline,
