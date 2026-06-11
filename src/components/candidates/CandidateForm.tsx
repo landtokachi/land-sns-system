@@ -9,7 +9,7 @@ import type { FetchUrlResponse, FetchUrlItem } from '@/app/api/ai/fetch-url/rout
 
 interface CandidateFormProps { initial?: Partial<PostCandidate>; candidateId?: string }
 type FreqOption = 'daily' | 'weekly' | 'manual' | 'none'
-type InputMode = 'url' | 'pdf'
+type InputMode = 'url' | 'pdf' | 'image'
 type Priority = 'high' | 'medium' | 'low'
 
 export function CandidateForm({ initial, candidateId }: CandidateFormProps) {
@@ -30,6 +30,9 @@ export function CandidateForm({ initial, candidateId }: CandidateFormProps) {
   const [pdfFullText, setPdfFullText] = useState('')
   const [pdfjsReady, setPdfjsReady] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [imageLoading, setImageLoading] = useState(false)
+  const [imageMsg, setImageMsg] = useState('')
+  const imageInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -101,6 +104,43 @@ export function CandidateForm({ initial, candidateId }: CandidateFormProps) {
     finally { setPdfLoading(false) }
   }
 
+  // 画像ファイルを縮小してdataURLに変換（リクエストを軽くする）
+  async function fileToDataUrl(file: File, maxDim = 1600, quality = 0.8): Promise<string> {
+    const dataUrl: string = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result as string); r.onerror = rej; r.readAsDataURL(file) })
+    const img = document.createElement('img')
+    await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = dataUrl })
+    let w = img.width, h = img.height
+    if (Math.max(w, h) > maxDim) { const s = maxDim / Math.max(w, h); w = Math.round(w * s); h = Math.round(h * s) }
+    const canvas = document.createElement('canvas'); canvas.width = w; canvas.height = h
+    const ctx = canvas.getContext('2d'); if (!ctx) return dataUrl
+    ctx.drawImage(img, 0, 0, w, h)
+    return canvas.toDataURL('image/jpeg', quality)
+  }
+
+  async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]; if (!file) return
+    setImageLoading(true); setImageMsg('')
+    try {
+      const dataUrl = await fileToDataUrl(file)
+      const res = await fetch('/api/ai/from-image', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image: dataUrl, filename: file.name }) })
+      if (!res.ok) throw new Error('API error')
+      const r = await res.json()
+      setForm(prev => ({ ...prev,
+        title: (r.title as string) || prev.title,
+        raw_text: (r.raw_text as string) || (r.summary as string) || prev.raw_text,
+        category: (r.category as string) || prev.category,
+        target_audience: (r.target_audience as string) || prev.target_audience,
+        organizer: (r.organizer as string) || prev.organizer,
+        event_date: (r.event_date as string) || prev.event_date,
+        deadline: (r.deadline as string) || prev.deadline,
+        region: (r.region as string) || prev.region,
+        application_url: (r.application_url as string) || prev.application_url,
+      }))
+      setImageMsg('✅ 画像を読み取ってフォームに反映しました')
+    } catch (err) { setImageMsg('⚠️ 画像の読み取りに失敗しました: ' + String(err)) }
+    finally { setImageLoading(false) }
+  }
+
   function applyPdfResult() {
     if (!pdfResult) return
     const isValidPriority = (v: unknown): v is Priority => v === 'high' || v === 'medium' || v === 'low'
@@ -146,7 +186,7 @@ export function CandidateForm({ initial, candidateId }: CandidateFormProps) {
       <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-5">
         <h3 className="font-semibold text-gray-800">基本情報</h3>
         <div className="flex rounded-lg overflow-hidden border border-gray-200 w-fit">
-          {([{k:'url' as InputMode,l:'🔗 URLから読み込む'},{k:'pdf' as InputMode,l:'📄 PDFからインポート'}]).map(m=>(
+          {([{k:'url' as InputMode,l:'🔗 URLから読み込む'},{k:'pdf' as InputMode,l:'📄 PDFからインポート'},{k:'image' as InputMode,l:'🖼 画像から取込'}]).map(m=>(
             <button key={m.k} type="button" onClick={()=>{setInputMode(m.k);setPdfResult(null);setPdfApplied(false);setPdfError('')}} className="px-4 py-2 text-sm font-medium transition-colors" style={inputMode===m.k?{background:'#4f46e5',color:'#fff'}:{background:'#f8fafc',color:'#64748b'}}>{m.l}</button>
           ))}
         </div>
@@ -200,6 +240,16 @@ export function CandidateForm({ initial, candidateId }: CandidateFormProps) {
             <Button type="button" onClick={applyPdfResult} size="sm">📋 この内容をフォームに反映する</Button>
           </div>}
           {pdfApplied&&<div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 text-sm text-green-700">✅ フォームに反映しました。</div>}
+        </div>}
+        {inputMode==='image'&&<div className="space-y-4">
+          <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4"><p className="text-sm font-semibold text-indigo-800 mb-1">🖼 チラシの写真からSNS投稿候補を自動生成</p><p className="text-xs text-indigo-600">写真（JPEG/PNG）をAIが直接読み取り、日程・会場・締切などを抽出します。</p></div>
+          <div className="border-2 border-dashed border-indigo-300 rounded-xl p-8 text-center cursor-pointer hover:border-indigo-500 hover:bg-indigo-50 transition-colors" onClick={()=>imageInputRef.current?.click()}>
+            <div className="text-4xl mb-2">📷</div><p className="text-sm font-medium text-gray-700">{imageLoading?'画像を解析中...':'クリックして写真を選択'}</p>
+            <p className="text-xs text-gray-400 mt-1">チラシ・ポスターの写真（JPEG / PNG）</p>
+            <input ref={imageInputRef} type="file" accept="image/*" onChange={handleImageUpload} className="hidden"/>
+          </div>
+          {imageLoading&&<div className="flex items-center gap-3 bg-blue-50 rounded-xl p-4"><div className="animate-spin rounded-full h-5 w-5 border-b-2 border-indigo-600"/><p className="text-sm text-indigo-700">AIが画像を読み取り中...（10〜20秒）</p></div>}
+          {imageMsg&&<div className={'rounded-xl px-4 py-3 text-sm '+(imageMsg.startsWith('✅')?'bg-green-50 border border-green-200 text-green-700':'bg-red-50 border border-red-200 text-red-700')}>{imageMsg}</div>}
         </div>}
         <div><label className="block text-sm font-medium text-gray-700 mb-1">タイトル <span className="text-red-500">*</span></label><input required value={form.title} onChange={e=>set('title',e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="投稿候補のタイトルを入力"/></div>
         <div><label className="block text-sm font-medium text-gray-700 mb-1">情報元名</label><input value={form.source_name} onChange={e=>set('source_name',e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="中小企業庁 など"/></div>

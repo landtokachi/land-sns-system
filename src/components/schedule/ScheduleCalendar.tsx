@@ -72,12 +72,14 @@ export default function ScheduleCalendar() {
   // ── 新規作成モード用 ──
   const [addMode, setAddMode] = useState<'existing' | 'new'>('existing')
   const [newForm, setNewForm] = useState({ title: '', source_url: '', source_name: '', raw_text: '', category: '', event_date: '', deadline: '' })
-  const [importInput, setImportInput] = useState<'url' | 'pdf'>('url')
+  const [importInput, setImportInput] = useState<'url' | 'pdf' | 'image'>('url')
+  const [imageLoading, setImageLoading] = useState(false)
   const [urlFetching, setUrlFetching] = useState(false)
   const [pdfLoading, setPdfLoading] = useState(false)
   const [importMsg, setImportMsg] = useState('')
   const [pdfjsReady, setPdfjsReady] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const imageInputRef = useRef<HTMLInputElement>(null)
 
   // PDF.js を読み込む
   useEffect(() => {
@@ -166,6 +168,44 @@ export default function ScheduleCalendar() {
   }
 
   // PDFを読み込んで新規フォームに反映
+  // 画像を縮小してdataURLに変換
+  const fileToDataUrl = async (file: File, maxDim = 1600, quality = 0.8): Promise<string> => {
+    const dataUrl: string = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result as string); r.onerror = rej; r.readAsDataURL(file) })
+    const img = document.createElement('img')
+    await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = dataUrl })
+    let w = img.width, h = img.height
+    if (Math.max(w, h) > maxDim) { const s = maxDim / Math.max(w, h); w = Math.round(w * s); h = Math.round(h * s) }
+    const canvas = document.createElement('canvas'); canvas.width = w; canvas.height = h
+    const ctx = canvas.getContext('2d'); if (!ctx) return dataUrl
+    ctx.drawImage(img, 0, 0, w, h)
+    return canvas.toDataURL('image/jpeg', quality)
+  }
+
+  // 写真（JPEG/PNG）を読み込んで新規フォームに反映
+  const handleImportImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]; if (!file) return
+    setImageLoading(true); setImportMsg('')
+    try {
+      const dataUrl = await fileToDataUrl(file)
+      const res = await fetch('/api/ai/from-image', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image: dataUrl, filename: file.name }) })
+      if (!res.ok) throw new Error('API error')
+      const r = await res.json()
+      setNewForm(f => ({
+        ...f,
+        title: (r.title as string) || f.title,
+        raw_text: (r.raw_text as string) || (r.summary as string) || f.raw_text,
+        category: (r.category as string) || f.category,
+        event_date: (r.event_date as string) || f.event_date,
+        deadline: (r.deadline as string) || f.deadline,
+      }))
+      setImportMsg('✅ 画像を読み取りました')
+    } catch {
+      setImportMsg('⚠️ 画像の読み取りに失敗しました')
+    } finally {
+      setImageLoading(false)
+    }
+  }
+
   const handleImportPdf = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]; if (!file) return
     setPdfLoading(true); setImportMsg('')
@@ -572,17 +612,18 @@ export default function ScheduleCalendar() {
                 <div className="space-y-3">
                   {/* 取り込み方法 */}
                   <div className="flex rounded-lg overflow-hidden border border-gray-200 w-fit">
-                    {([{ k: 'url' as const, l: '🔗 URLから' }, { k: 'pdf' as const, l: '📄 PDFから' }]).map(m => (
+                    {([{ k: 'url' as const, l: '🔗 URLから' }, { k: 'pdf' as const, l: '📄 PDFから' }, { k: 'image' as const, l: '🖼 画像から' }]).map(m => (
                       <button key={m.k} type="button" onClick={() => { setImportInput(m.k); setImportMsg('') }} className="px-3 py-1.5 text-xs font-medium transition-colors" style={importInput === m.k ? { background: '#4f46e5', color: '#fff' } : { background: '#f8fafc', color: '#64748b' }}>{m.l}</button>
                     ))}
                   </div>
 
-                  {importInput === 'url' ? (
+                  {importInput === 'url' && (
                     <div className="flex gap-2">
                       <input type="url" value={newForm.source_url} onChange={e => setNewForm(f => ({ ...f, source_url: e.target.value }))} placeholder="https://..." className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm" />
                       <button type="button" onClick={handleImportUrl} disabled={!newForm.source_url || urlFetching} className="px-3 py-2 rounded-lg text-xs font-medium bg-indigo-50 text-indigo-600 border border-indigo-200 disabled:opacity-50 whitespace-nowrap">{urlFetching ? '読み取り中...' : '🔍 読み込む'}</button>
                     </div>
-                  ) : (
+                  )}
+                  {importInput === 'pdf' && (
                     <div>
                       <div className="border-2 border-dashed border-indigo-300 rounded-xl p-5 text-center cursor-pointer hover:border-indigo-500 hover:bg-indigo-50 transition-colors" onClick={() => fileInputRef.current?.click()}>
                         <div className="text-2xl mb-1">📎</div>
@@ -590,6 +631,15 @@ export default function ScheduleCalendar() {
                         <input ref={fileInputRef} type="file" accept=".pdf" onChange={handleImportPdf} className="hidden" />
                       </div>
                       {!pdfjsReady && <p className="text-xs text-amber-600 mt-1">PDF読み取りエンジンを準備中...</p>}
+                    </div>
+                  )}
+                  {importInput === 'image' && (
+                    <div>
+                      <div className="border-2 border-dashed border-indigo-300 rounded-xl p-5 text-center cursor-pointer hover:border-indigo-500 hover:bg-indigo-50 transition-colors" onClick={() => imageInputRef.current?.click()}>
+                        <div className="text-2xl mb-1">📷</div>
+                        <p className="text-xs font-medium text-gray-700">{imageLoading ? 'AIが画像を解析中...（10〜20秒）' : 'クリックしてチラシ写真を選択（JPEG/PNG）'}</p>
+                        <input ref={imageInputRef} type="file" accept="image/*" onChange={handleImportImage} className="hidden" />
+                      </div>
                     </div>
                   )}
 
