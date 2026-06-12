@@ -294,6 +294,25 @@ export default function ScheduleCalendar() {
     }
   }
 
+  // 予定を削除（カレンダーから外す）
+  const handleDeleteSchedule = async (id: string) => {
+    if (!confirm('この投稿予定をカレンダーから削除します。よろしいですか？')) return
+    await fetch(`/api/schedule?id=${id}`, { method: 'DELETE' })
+    await fetchPosts()
+  }
+
+  // 予定の日時を変更
+  const handleReschedule = async (id: string, value: string) => {
+    if (!value) return
+    const scheduled_at = new Date(value).toISOString()
+    await fetch('/api/schedule', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, scheduled_at }),
+    })
+    await fetchPosts()
+  }
+
   const canSubmit = addMode === 'existing'
     ? !!addForm.post_candidate_id && !!addForm.scheduled_date
     : !!newForm.title.trim() && !!addForm.scheduled_date
@@ -560,6 +579,24 @@ export default function ScheduleCalendar() {
                           ✍️ AI投稿文を生成する →
                         </Link>
                       )}
+                      {/* 編集（日時変更）・削除 */}
+                      <div className="flex items-center gap-2 mt-3 pt-2 border-t border-gray-50">
+                        <label className="text-xs text-gray-400 flex items-center gap-1">
+                          📅 日時変更
+                          <input
+                            type="datetime-local"
+                            defaultValue={post.scheduled_at ? post.scheduled_at.slice(0, 16) : ''}
+                            onChange={(e) => handleReschedule(post.id, e.target.value)}
+                            className="border border-gray-200 rounded-md px-2 py-1 text-xs"
+                          />
+                        </label>
+                        <button
+                          onClick={() => handleDeleteSchedule(post.id)}
+                          className="ml-auto text-xs text-red-500 hover:text-red-600 hover:underline"
+                        >
+                          🗑 削除
+                        </button>
+                      </div>
                     </div>
                   )
                 })}

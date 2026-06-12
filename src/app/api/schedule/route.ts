@@ -111,3 +111,18 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to update' }, { status: 500 })
   }
 }
+
+// DELETE: 投稿予定を削除（カレンダーから削除）
+export async function DELETE(request: NextRequest) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { searchParams } = new URL(request.url)
+  const id = searchParams.get('id')
+  if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 })
+
+  const { error } = await supabase.from('social_posts').delete().eq('id', id)
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ ok: true })
+}
